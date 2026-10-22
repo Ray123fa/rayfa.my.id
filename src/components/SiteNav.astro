@@ -7,7 +7,7 @@ const current = (href: string) => path === href ? "page" : undefined;
 
 <header class="topbar">
   <a class="logo" href="/" aria-label="Beranda Portoku">
-    RK<span style="color:var(--orange)">●</span>
+    <img src="/logo.png" alt="Rayhan’s Portfolio" width="80" height="64" />
   </a>
   <nav class="nav" id="site-nav" aria-label="Navigasi utama">
     <a href="/" aria-current={current("/")}>
@@ -56,6 +56,10 @@ const current = (href: string) => path === href ? "page" : undefined;
   });
 </script>
 <style>
+  .logo img {
+    display: block;
+    object-fit: contain;
+  }
   .nav[data-open="true"] {
     display: grid;
     position: absolute;
