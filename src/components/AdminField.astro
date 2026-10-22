@@ -1,0 +1,135 @@
+---
+import { fieldLabel } from "@/lib/labels";
+
+export interface Option {
+  value: string;
+  label: string;
+}
+export interface Field {
+  name: string;
+  type?:
+    | "text"
+    | "number"
+    | "checkbox"
+    | "chips"
+    | "textarea"
+    | "select"
+    | "tags"
+    | "url";
+  required?: boolean;
+  /** Consecutive fields marked inline share one form row. */
+  inline?: boolean;
+  /** Span both form columns. */
+  wide?: boolean;
+  options?: (string | Option)[];
+}
+interface Props {
+  field: Field;
+  idPrefix?: string;
+}
+const { field, idPrefix = "field" } = Astro.props;
+const optionValue = (option: string | Option) =>
+  typeof option === "string" ? option : option.value;
+const optionLabel = (option: string | Option) =>
+  typeof option === "string" ? option : option.label;
+const caption = fieldLabel(field.name).toUpperCase();
+const examples: Record<string, string> = {
+  title: "Masukkan judul",
+  description: "Tuliskan deskripsi…",
+  year: "Contoh: 2026",
+  sortOrder: "Contoh: 0",
+  githubUrl: "https://github.com/username/repository",
+  demoUrl: "https://example.com/demo",
+  url: "https://example.com",
+  name: "Masukkan nama",
+  organization: "Contoh: Acme Studio",
+  institution: "Contoh: sekolah atau platform belajar",
+  period: "Contoh: 2020–2023 atau 2023–Sekarang",
+  startDate: "Contoh: Januari 2024",
+  endDate: "Contoh: Desember 2025 — kosongkan jika masih berlangsung",
+  issuer: "Contoh: Google",
+  platform: "Contoh: GitHub",
+};
+const placeholder = examples[field.name] || `Masukkan ${caption.toLowerCase()}`;
+---
+
+{field.type === "chips" ? (
+  <div class:list={{ "chip-wrap": true, wide: field.wide }}>
+    <label class="chip-caption" for={`${idPrefix}-${field.name}`}>
+      {caption}{" "}
+      {field.required ? (
+        <span class="required-mark">*</span>
+      ) : (
+        <span class="field-note">(opsional)</span>
+      )}
+    </label>
+    <div class="chip-field" data-chips={field.name}>
+      <input type="hidden" name={field.name} data-type="tags" />
+      <input
+        class="chip-input"
+        id={`${idPrefix}-${field.name}`}
+        type="text"
+        placeholder="Tambah tag, tekan Enter…"
+      />
+    </div>
+  </div>
+) : (
+  <label
+    class:list={{
+      wide: field.type === "textarea" || field.wide,
+      "checkbox-field": field.type === "checkbox",
+    }}
+  >
+    <span>
+      {caption}{" "}
+      {field.required ? (
+        <span class="required-mark">*</span>
+      ) : (
+        <span class="field-note">(opsional)</span>
+      )}
+    </span>
+    {field.type === "checkbox" ? (
+      <input name={field.name} type="checkbox" />
+    ) : field.type === "select" ? (
+      <select name={field.name} required={field.required}>
+        <option value="">Pilih {caption.toLowerCase()}…</option>
+        {field.options?.map((option) => (
+          <option value={optionValue(option)}>{optionLabel(option)}</option>
+        ))}
+      </select>
+    ) : field.type === "textarea" ? (
+      <textarea
+        name={field.name}
+        required={field.required}
+        placeholder={placeholder}
+      ></textarea>
+    ) : (
+      <input
+        name={field.name}
+        type={
+          field.type === "number"
+            ? "number"
+            : field.type === "url"
+              ? "url"
+              : "text"
+        }
+        data-type={field.type === "tags" ? "tags" : undefined}
+        placeholder={placeholder}
+        required={field.required}
+      />
+    )}
+  </label>
+)}
+
+<style>
+  .required-mark {
+    color: #b42318;
+  }
+  .field-note {
+    color: var(--muted-foreground);
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+</style>

@@ -1,0 +1,31 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import AdminCrud from "@/components/AdminCrud.astro";
+import { list } from "@/components/adminData";
+const rows = await list("project", { sortOrder: "asc" });
+---
+
+<AdminLayout title="Proyek">
+  <AdminCrud
+    resource="projects"
+    title="Proyek"
+    uploadField="thumbnailKey"
+    fields={[
+      { name: "title", required: true, inline: true },
+      { name: "year", type: "number", required: true, inline: true },
+      { name: "description", type: "textarea", required: true },
+      {
+        name: "techStack",
+        type: "chips",
+        wide: true,
+      },
+      { name: "githubUrl", type: "url" },
+      { name: "demoUrl", type: "url" },
+      { name: "sortOrder", type: "number", required: true, inline: true },
+      { name: "featured", type: "checkbox", inline: true },
+      { name: "published", type: "checkbox", inline: true },
+    ]}
+    columns={["title", "year", "published", "featured"]}
+    rows={rows}
+  />
+</AdminLayout>

@@ -1,0 +1,278 @@
+---
+import { MapPin, GraduationCap, BriefcaseBusiness, Gamepad2 } from "lucide-react";
+import { certificationKind } from "@/lib/labels";
+import PublicLayout from "@/layouts/PublicLayout.astro";
+import { profileData, db, media } from "@/components/content";
+import type { Education } from "@prisma/client";
+const profile = await profileData();
+let educations: Education[] = [];
+try {
+  educations = await db().education.findMany({
+    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+  });
+} catch {}
+let categories: any[] = [],
+  experiences: any[] = [],
+  certs: any[] = [];
+try {
+  [categories, experiences, certs] = await Promise.all([
+    db().skillCategory.findMany({
+      include: { skills: { orderBy: { sortOrder: "asc" } } },
+      orderBy: { sortOrder: "asc" },
+    }),
+    db().experience.findMany({ orderBy: { sortOrder: "asc" } }),
+    db().certification.findMany({ orderBy: { sortOrder: "asc" } }),
+  ]);
+} catch {}
+---
+
+<PublicLayout title="Tentang">
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Sosok di balik karya</p>
+      <h1>
+        Tentang
+        <br />
+        saya.
+      </h1>
+    </div>
+    <dl class="panel orange quick-bio">
+      <div class="bio-row">
+        <dt>
+          <span aria-hidden="true"><MapPin size={20} /></span>Lokasi:
+        </dt>{" "}
+        <dd>{profile?.location || "—"}</dd>
+      </div>
+      <div class="bio-row">
+        <dt>
+          <span aria-hidden="true"><GraduationCap size={20} /></span>Pendidikan:
+        </dt>{" "}
+        <dd>{profile?.education || "—"}</dd>
+      </div>
+      <div class="bio-row">
+        <dt>
+          <span aria-hidden="true"><BriefcaseBusiness size={20} /></span>Peran saat ini:
+        </dt>{" "}
+        <dd>{profile?.currentRole || "—"}</dd>
+      </div>
+      <div class="bio-row">
+        <dt>
+          <span aria-hidden="true"><Gamepad2 size={20} /></span>Hobi:
+        </dt>{" "}
+        <dd>{profile?.hobbies || "—"}</dd>
+      </div>
+    </dl>
+  </section>
+  {educations.length > 0 && (
+    <section class="section" aria-labelledby="education-title">
+      <h2 id="education-title">Pendidikan</h2>
+      <ol class="education-timeline">
+        {educations.map((item) => (
+          <li class="education-entry">
+            <article class="panel education-card">
+              {item.logoKey ? (
+                <img
+                  src={media(item.logoKey)}
+                  alt=""
+                  width="56"
+                  height="56"
+                  loading="lazy"
+                />
+              ) : (
+                <svg
+                  class="education-icon"
+                  width="56"
+                  height="56"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m2 9 10-5 10 5-10 5L2 9Z" />
+                  <path d="M6 11v6c4 3 8 3 12 0v-6M22 9v7" />
+                </svg>
+              )}
+              <div>
+                <h3>{item.title}</h3>
+                <p class="education-institution">{item.institution}</p>
+                <p class="education-period">{item.period}</p>
+              </div>
+            </article>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )}
+  <section class="section">
+    <div class="section-head">
+      <h2>Keahlian</h2>
+    </div>
+    <div class="grid">
+      {categories.map((category: any) => (
+        <article class="card">
+          <h3>{category.name}</h3>
+          <div class="tags">
+            {category.skills.map((skill: any) => (
+              <span class="tag">{skill.name}</span>
+            ))}
+          </div>
+        </article>
+      ))}
+    </div>
+  </section>
+  <section class="section">
+    <h2>Pengalaman</h2>
+    <div style="display:grid;gap:1rem;margin-top:2rem">
+      {experiences.map((item: any) => (
+        <article class="panel">
+          <p class="eyebrow">
+            {item.startDate} — {item.endDate || "Sekarang"}
+          </p>
+          <h3>
+            {item.title} / {item.organization}
+          </h3>
+          <p>{item.description}</p>
+        </article>
+      ))}
+    </div>
+  </section>
+  <section class="section">
+    <h2>Penghargaan</h2>
+    <div class="grid" style="margin-top:2rem">
+      {certs.map((item: any) => (
+        <article class="card">
+          <span class="tag">{certificationKind(item.kind)}</span>
+          <h3>{item.title}</h3>
+          <p>
+            {item.issuer} · {item.year}
+          </p>
+        </article>
+      ))}
+    </div>
+  </section>
+</PublicLayout>
+
+<style>
+  .quick-bio {
+    display: grid;
+    gap: 1rem;
+    margin: 0;
+    min-width: 0;
+  }
+  .bio-row {
+    position: relative;
+    padding-left: 2rem;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+  .bio-row dt,
+  .bio-row dd {
+    display: inline;
+    margin: 0;
+  }
+  .bio-row dt {
+    white-space: nowrap;
+  }
+  .bio-row dt span {
+    position: absolute;
+    left: 0;
+    top: 0.2rem;
+    display: flex;
+    justify-content: center;
+    width: 1.5rem;
+    text-align: center;
+  }
+  .education-timeline {
+    list-style: none;
+    padding: 0;
+    margin: 2rem 0 0;
+    position: relative;
+    display: grid;
+    gap: 2rem;
+  }
+  .education-timeline::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 9px;
+    width: 3px;
+    background: var(--ink);
+  }
+  .education-entry {
+    position: relative;
+    padding-left: 2.5rem;
+    min-width: 0;
+  }
+  .education-entry::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 2rem;
+    width: 21px;
+    height: 21px;
+    border: 2px solid var(--ink);
+    border-radius: 50%;
+    background: var(--orange);
+    z-index: 1;
+  }
+  .education-entry:nth-child(even)::before {
+    background: var(--secondary);
+  }
+  .education-card {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+  .education-card > div {
+    min-width: 0;
+  }
+  .education-card h3,
+  .education-card p {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .education-card h3 {
+    font-size: 1.25rem;
+  }
+  .education-card .education-institution {
+    margin-top: 0.5rem;
+  }
+  .education-card .education-period {
+    margin-top: 0.25rem;
+    color: var(--muted-foreground);
+    font-size: 0.9rem;
+  }
+  .education-card img,
+  .education-icon {
+    flex: 0 0 56px;
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+  }
+  @media (min-width: 768px) {
+    .education-timeline::before {
+      left: calc(50% - 1.5px);
+    }
+    .education-entry {
+      width: 50%;
+      margin-left: 50%;
+      padding-left: 2rem;
+    }
+    .education-entry::before {
+      left: -10.5px;
+    }
+    .education-entry:nth-child(even) {
+      margin-left: 0;
+      padding-left: 0;
+      padding-right: 2rem;
+    }
+    .education-entry:nth-child(even)::before {
+      left: auto;
+      right: -10.5px;
+    }
+  }
+</style>

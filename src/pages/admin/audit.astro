@@ -1,0 +1,33 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { auditAction } from "@/lib/labels";
+import { list } from "@/components/adminData";
+const rows = await list("auditLog");
+---
+
+<AdminLayout title="Audit">
+  <h1>Riwayat aktivitas</h1>
+  <p>Catatan aktivitas admin terbaru yang hanya dapat dibaca.</p>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Waktu</th>
+          <th>Pelaku</th>
+          <th>Tindakan</th>
+          <th>Sasaran</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row: any) => (
+          <tr>
+            <td>{new Date(row.createdAt).toLocaleString("id-ID")}</td>
+            <td>{row.actorEmail || "Sistem"}</td>
+            <td>{auditAction(row.action)}</td>
+            <td>{row.target || "—"}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</AdminLayout>

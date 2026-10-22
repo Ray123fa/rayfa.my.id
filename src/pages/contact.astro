@@ -1,0 +1,102 @@
+---
+import PublicLayout from "@/layouts/PublicLayout.astro";
+import { db, safeUrl } from "@/components/content";
+let links: any[] = [];
+try {
+  links = await db().socialLink.findMany({ orderBy: { sortOrder: "asc" } });
+} catch {}
+---
+
+<PublicLayout title="Kontak">
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Mari mulai percakapan</p>
+      <h1>
+        Mari wujudkan
+        <br />
+        ide Anda.
+      </h1>
+    </div>
+    <p class="hero-copy">
+      Punya proyek, pertanyaan, atau ide menarik?
+      Kirimkan pesan Anda.
+    </p>
+  </section>
+  <section class="section split">
+    <form class="panel" action="/api/contact" method="post" data-contact>
+      <label for="name">Nama</label>
+      <input
+        id="name"
+        name="name"
+        autocomplete="name"
+        maxlength="100"
+        required
+      />
+      <label for="email">Email</label>
+      <input
+        id="email"
+        name="email"
+        type="email"
+        autocomplete="email"
+        maxlength="254"
+        required
+      />
+      <label for="message">Pesan</label>
+      <textarea
+        id="message"
+        name="message"
+        maxlength="5000"
+        required
+      ></textarea>
+      <div class="sr-only" aria-hidden="true">
+        <label for="website">Biarkan kosong</label>
+        <input id="website" name="website" tabindex="-1" autocomplete="off" />
+      </div>
+      <button type="submit" style="margin-top:1rem">
+        Kirim pesan ↗
+      </button>
+      <p role="status">
+        {Astro.url.searchParams.get("sent") === "1"
+          ? "Pesan terkirim. Terima kasih sudah menghubungi saya."
+          : Astro.url.searchParams.get("error")
+            ? "Pesan gagal dikirim. Silakan coba lagi nanti."
+            : ""}
+      </p>
+    </form>
+    <aside>
+      <h2>Temukan saya juga</h2>
+      <p>Terhubung dengan saya melalui platform berikut.</p>
+      <div style="display:grid;gap:.8rem">
+        {links.map(
+          (link) =>
+            safeUrl(link.url) && (
+              <a
+                class="button"
+                href={safeUrl(link.url)}
+                rel="noopener noreferrer"
+              >
+                {link.platform} ↗
+              </a>
+            ),
+        )}
+      </div>
+    </aside>
+  </section>
+  <script>
+    import { setupFormValidation } from "@/lib/adminFormValidation";
+    const contactForm =
+      document.querySelector<HTMLFormElement>("[data-contact]");
+    const validation = contactForm ? setupFormValidation(contactForm) : null;
+    contactForm?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!validation?.validate()) return;
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.fromEntries(new FormData(contactForm))),
+      });
+      if (response.ok) location.href = "/contact?sent=1";
+      else location.href = "/contact?error=1";
+    });
+  </script>
+</PublicLayout>

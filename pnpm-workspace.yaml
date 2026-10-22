@@ -1,3 +1,12 @@
+overrides:
+  effect: 3.20.0
+  deepmerge-ts: 8.0.0
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  esbuild: true
+  prisma: true
+  workerd: true
 minimumReleaseAgeExclude:
   - '@astrojs/markdown-satteri@0.4.5'
   - '@astrojs/prism@4.1.1'

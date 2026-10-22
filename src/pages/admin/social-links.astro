@@ -1,0 +1,20 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import AdminCrud from "@/components/AdminCrud.astro";
+import { list } from "@/components/adminData";
+const rows = await list("socialLink", { sortOrder: "asc" });
+---
+
+<AdminLayout title="Tautan sosial">
+  <AdminCrud
+    resource="socials"
+    title="Tautan sosial"
+    fields={[
+      { name: "platform", required: true },
+      { name: "url", type: "url", required: true },
+      { name: "sortOrder", type: "number", required: true },
+    ]}
+    columns={["platform", "url", "sortOrder"]}
+    rows={rows}
+  />
+</AdminLayout>

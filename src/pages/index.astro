@@ -1,16 +1,199 @@
 ---
+import PublicLayout from "@/layouts/PublicLayout.astro";
+import { profileData, db, strings, media, safeUrl } from "@/components/content";
+import type { SocialLink } from "@prisma/client";
+
+const profile = await profileData();
+let projects: any[] = [];
+try {
+  projects = await db().project.findMany({
+    where: { published: true, featured: true },
+    orderBy: { sortOrder: "asc" },
+    take: 4,
+  });
+} catch {}
+
+let links: SocialLink[] = [];
+try {
+  links = await db().socialLink.findMany({ orderBy: { sortOrder: "asc" } });
+} catch {}
+const socialLinks = links.flatMap((link) => {
+  const url = safeUrl(link.url);
+  return url ? [{ platform: link.platform, url }] : [];
+});
+
+const name = profile?.name || "Muhammad Rayhan Faridh";
+const ogImage = profile?.ogImageKey ? media(profile.ogImageKey) : undefined;
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<PublicLayout
+  title={name}
+  description={profile?.description || undefined}
+  image={ogImage}
+>
+  <section class="hero" id="beranda">
+    <div>
+      <h1>{name}</h1>
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:2rem">
+        <a class="button" href="/#proyek">
+          Lihat proyek ↘
+        </a>
+        <a class="button" style="background:var(--cream)" href="/#kontak">
+          Mulai percakapan
+        </a>
+      </div>
+    </div>
+    <img
+      class="hero-illustration"
+      src="/hero-illustration.svg"
+      alt=""
+      width="942"
+      height="704"
+    />
+  </section>
+
+  <section class="section split" id="tentang" aria-labelledby="tentang-title">
+    <div>
+      <p class="eyebrow">Sekilas tentang saya</p>
+      <h2 id="tentang-title">
+        Karya yang baik
+        <br />
+        tetap bermanfaat.
+      </h2>
+    </div>
+    <div class="panel">
+      <dl class="profile-summary">
+        <div><dt>Lokasi</dt><dd>{profile?.location || "—"}</dd></div>
+        <div><dt>Peran saat ini</dt><dd>{profile?.currentRole || "—"}</dd></div>
+      </dl>
+      <a class="button" href="/about">Selengkapnya tentang saya ↗</a>
+    </div>
+  </section>
+
+  <section class="section" id="proyek" aria-labelledby="proyek-title">
+    <div class="section-head">
+      <h2 id="proyek-title">
+        Karya
+        <br />
+        pilihan
+      </h2>
+      <a class="button" href="/projects">
+        Lihat semua ↗
+      </a>
+    </div>
+    <div class="grid">
+      {projects.length
+        ? projects.map((project: any) => (
+            <article class="card">
+              <div class="thumb">
+                {project.thumbnailKey ? (
+                  <img
+                    src={media(project.thumbnailKey)}
+                    alt={`${project.title} pratinjau proyek`}
+                    style="width:100%;height:100%;object-fit:cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  `0${project.year || ""}`
+                )}
+              </div>
+              <h3>{project.title}</h3>
+              <p>{project.description}</p>
+              <div class="tags">
+                {strings(project.techStack).map((tag) => (
+                  <span class="tag">{tag}</span>
+                ))}
+              </div>
+            </article>
+          ))
+        : ["Sistem antarmuka", "Perangkat kampanye", "Aplikasi kecil yang bermanfaat"].map(
+            (title, index) => (
+              <article class="card">
+                <div class="thumb">0{index + 1}</div>
+                <h3>{title}</h3>
+                <p>Proyek akan ditampilkan di sini setelah ditambahkan.</p>
+                <span class="tag">Proyek segera hadir</span>
+              </article>
+            ),
+          )}
+    </div>
+  </section>
+
+  <section class="section split" id="kontak" aria-labelledby="kontak-title">
+    <div>
+      <p class="eyebrow">Mari mulai percakapan</p>
+      <h2 id="kontak-title">
+        Mari wujudkan
+        <br />
+        ide Anda.
+      </h2>
+    </div>
+    <div class="panel">
+      <p class="hero-copy">
+        Punya proyek, pertanyaan, atau ide menarik? Kirimkan pesan Anda.
+      </p>
+      <a class="button contact-button" href="/contact">
+        Kirim pesan ↗
+      </a>
+      {socialLinks.length > 0 && (
+        <div class="social-links">
+          <h3>Temukan saya juga</h3>
+          <div class="tags">
+            {socialLinks.map((link) => (
+              <a class="button" href={link.url} rel="noopener noreferrer">
+                {link.platform} ↗
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  </section>
+</PublicLayout>
+
+<style>
+  section[id] {
+    scroll-margin-top: 7rem;
+  }
+  .profile-summary {
+    display: grid;
+    gap: 1rem;
+    margin: 0 0 1.5rem;
+    overflow-wrap: anywhere;
+  }
+  .profile-summary dt {
+    font-weight: 700;
+  }
+  .profile-summary dd {
+    margin: 0.25rem 0 0;
+  }
+  .contact-button,
+  .social-links {
+    margin-top: 1.5rem;
+  }
+  .social-links a {
+    overflow-wrap: anywhere;
+    max-width: 100%;
+  }
+  .hero {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: center;
+  }
+  .hero h1 {
+    overflow-wrap: anywhere;
+  }
+  .hero-illustration {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  @media (max-width: 800px) {
+    .hero {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .hero-illustration {
+      max-width: 420px;
+      justify-self: center;
+    }
+  }
+</style>

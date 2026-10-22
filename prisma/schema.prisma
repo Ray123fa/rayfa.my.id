@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "client"
+}
+datasource db {
+ provider = "sqlite"
+ url = "file:./dev.db"
+}
+model AdminEmail {
+  id String @id @default(cuid())
+  email String @unique
+  isDefault Boolean @default(false)
+  addedBy String?
+  createdAt DateTime @default(now())
+}
+model Session {
+  id String @id @default(cuid())
+  tokenHash String @unique
+  email String
+  googleSub String
+  name String?
+  picture String?
+  expiresAt DateTime
+  lastSeenAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  @@index([expiresAt])
+  @@index([email])
+}
+model Profile {
+  id String @id @default("main")
+  name String
+  description String
+  location String?
+  education String?
+  currentRole String?
+  hobbies String?
+  ogImageKey String?
+  updatedAt DateTime @updatedAt
+}
+model Project {
+  id String @id @default(cuid())
+  title String
+  description String
+  year Int
+  techStack String @default("[]")
+  githubUrl String?
+  demoUrl String?
+  thumbnailKey String?
+  sortOrder Int @default(0)
+  featured Boolean @default(false)
+  published Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([published, sortOrder])
+}
+model SkillCategory {
+  id String @id @default(cuid())
+  name String
+  sortOrder Int @default(0)
+  skills Skill[]
+}
+model Skill {
+  id String @id @default(cuid())
+  name String
+  sortOrder Int @default(0)
+  categoryId String
+  category SkillCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  @@index([categoryId])
+}
+model Education {
+  id String @id @default(cuid())
+  title String
+  institution String
+  period String
+  logoKey String?
+  sortOrder Int @default(0)
+}
+model Experience {
+  id String @id @default(cuid())
+  title String
+  organization String
+  startDate String
+  endDate String?
+  description String?
+  sortOrder Int @default(0)
+}
+model Certification {
+  id String @id @default(cuid())
+  kind String
+  title String
+  issuer String
+  year Int
+  sortOrder Int @default(0)
+}
+model SocialLink {
+  id String @id @default(cuid())
+  platform String
+  url String
+  sortOrder Int @default(0)
+}
+model Message {
+  id String @id @default(cuid())
+  name String
+  email String
+  body String
+  ipHash String?
+  isRead Boolean @default(false)
+  createdAt DateTime @default(now())
+  @@index([isRead, createdAt])
+}
+model RateLimit {
+  key String @id
+  count Int
+  resetAt DateTime
+}
+model AuditLog {
+  id String @id @default(cuid())
+  actorEmail String?
+  action String
+  target String?
+  ip String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  @@index([createdAt])
+}

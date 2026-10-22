@@ -1,0 +1,24 @@
+---
+import PublicLayout from "@/layouts/PublicLayout.astro";
+const error = Astro.url.searchParams.get("error");
+---
+
+<PublicLayout title="Masuk admin" noindex>
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Area terbatas</p>
+      <h1>
+        Masuk
+        <br />
+        admin.
+      </h1>
+    </div>
+    <div class="panel orange">
+      <p>Masuk dengan akun Google yang telah diberi akses.</p>
+      <a class="button" style="background:var(--cream)" href="/api/auth/google">
+        Masuk dengan Google ↗
+      </a>
+      {error && <p role="alert">Akses ditolak. Gunakan akun yang telah diberi akses.</p>}
+    </div>
+  </section>
+</PublicLayout>

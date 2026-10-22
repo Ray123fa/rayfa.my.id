@@ -1,0 +1,47 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import AdminCrud from "@/components/AdminCrud.astro";
+import { list } from "@/components/adminData";
+const categories = await list("skillCategory", { sortOrder: "asc" });
+const skills = (await list("skill", { sortOrder: "asc" })).map(
+  (skill: any) => ({
+    ...skill,
+    categoryName:
+      categories.find((category: any) => category.id === skill.categoryId)
+        ?.name || "—",
+  }),
+);
+---
+
+<AdminLayout title="Keahlian">
+  <AdminCrud
+    resource="categories"
+    title="Kategori"
+    fields={[
+      { name: "name", required: true },
+      { name: "sortOrder", type: "number", required: true },
+    ]}
+    columns={["name", "sortOrder"]}
+    rows={categories}
+  />
+  <div style="height:4rem"></div>
+  <AdminCrud
+    resource="skills"
+    title="Keahlian"
+    fields={[
+      { name: "name", required: true },
+      {
+        name: "categoryId",
+        type: "select",
+        options: categories.map((category: any) => ({
+          value: category.id,
+          label: category.name,
+        })),
+        required: true,
+      },
+      { name: "sortOrder", type: "number", required: true },
+    ]}
+    columns={["name", "categoryName", "sortOrder"]}
+    rows={skills}
+  />
+</AdminLayout>

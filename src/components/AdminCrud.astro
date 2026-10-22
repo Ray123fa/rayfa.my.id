@@ -1,0 +1,386 @@
+---
+import { fieldLabel, certificationKind } from "@/lib/labels";
+import AdminField, { type Field } from "@/components/AdminField.astro";
+import ImageDropzone from "@/components/ImageDropzone.astro";
+interface Props {
+  resource: string;
+  title: string;
+  fields: Field[];
+  rows?: Record<string, any>[];
+  columns?: string[];
+  uploadField?: string;
+}
+const {
+  resource,
+  title,
+  fields,
+  rows = [],
+  columns = fields.map((f) => f.name).slice(0, 4),
+  uploadField,
+} = Astro.props;
+// Consecutive fields marked inline:true share a single row, e.g. number + checkboxes.
+const groups = fields.reduce<Array<{ inline: boolean; items: Field[] }>>(
+  (groups, field) => {
+    const last = groups[groups.length - 1];
+    if (field.inline && last?.inline) last.items.push(field);
+    else groups.push({ inline: Boolean(field.inline), items: [field] });
+    return groups;
+  },
+  [],
+);
+---
+
+<section data-crud={resource} data-upload-field={uploadField || ""}>
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Modul admin</p>
+      <h1>{title}</h1>
+    </div>
+    <button type="button" data-new>
+      Tambah data
+    </button>
+  </div>
+
+  <dialog
+    class="panel"
+    data-editor
+    aria-labelledby={`${resource}-editor-title`}
+  >
+    <form method="dialog" class="form-grid" data-form novalidate>
+      <h2 class="wide" id={`${resource}-editor-title`}>
+        Ubah {title}
+      </h2>
+      <input type="hidden" name="id" />
+      {groups.map((group) =>
+        group.inline ? (
+          <div class="inline-row">
+            {group.items.map((field) => (
+              <AdminField field={field} idPrefix={resource} />
+            ))}
+          </div>
+        ) : (
+          group.items.map((field) => (
+            <AdminField field={field} idPrefix={resource} />
+          ))
+        ),
+      )}
+      {uploadField && (
+        <ImageDropzone name="image" label="Gambar" idPrefix={resource} />
+      )}
+      <p class="wide" role="status"></p>
+      <div class="wide" style="display:flex;gap:1rem">
+        <button type="submit">Simpan ↗</button>
+        <button type="button" data-close style="background:var(--cream)">
+          Batal
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          {columns.map((col) => (
+            <th>{fieldLabel(col)}</th>
+          ))}
+          <th>Tindakan</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr>
+            {columns.map((col) => (
+              <td>
+                {col === "kind"
+                  ? certificationKind(String(row[col] ?? ""))
+                  : typeof row[col] === "boolean"
+                    ? row[col]
+                      ? "Ya"
+                      : "Tidak"
+                    : Array.isArray(row[col])
+                      ? row[col].join(", ")
+                      : String(row[col] ?? "—")}
+              </td>
+            ))}
+            <td>
+              <button type="button" data-edit data-row={JSON.stringify(row)}>
+                Ubah
+              </button>
+              <button
+                type="button"
+                data-delete={row.id}
+                style="background:var(--cream)"
+              >
+                Hapus
+              </button>
+            </td>
+          </tr>
+        ))}
+        {!rows.length && (
+          <tr>
+            <td colspan={columns.length + 1}>
+              Belum ada data. Pilih “Tambah data” untuk menambahkan.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+</section>
+<script>
+  import { confirmAction, showAlert } from "@/lib/adminDialog";
+  import { setupImageUpload } from "@/lib/imageUpload";
+  import { setupFormValidation } from "@/lib/adminFormValidation";
+
+  const csrf = () =>
+    document.cookie
+      .split("; ")
+      .find((value) => value.startsWith("__Host-portoku_csrf="))
+      ?.split("=")
+      .slice(1)
+      .join("=") || "";
+  const request = (url: string, init: RequestInit = {}) =>
+    fetch(url, {
+      ...init,
+      headers: { ...(init.headers || {}), "x-csrf-token": csrf() },
+    });
+  const errorMessage = async (response: Response, fallback: string) => {
+    const payload = (await response.json().catch(() => null)) as {
+      error?: string;
+      detail?: string;
+    } | null;
+    if (payload?.error === "CSRF")
+      return "Sesi tidak valid. Muat ulang halaman dan coba lagi.";
+    return payload?.error || payload?.detail || fallback;
+  };
+  const parseJsonArray = (value: unknown): string[] | null => {
+    if (Array.isArray(value))
+      return value.filter((item): item is string => typeof item === "string");
+    if (typeof value !== "string" || !value.startsWith("[")) return null;
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed)
+        ? parsed.filter((item): item is string => typeof item === "string")
+        : null;
+    } catch {
+      return null;
+    }
+  };
+
+  document.querySelectorAll<HTMLElement>("[data-crud]").forEach((root) => {
+    const resource = root.dataset.crud!;
+    const dialog = root.querySelector<HTMLDialogElement>("[data-editor]")!;
+    const form = root.querySelector<HTMLFormElement>("[data-form]")!;
+    const status = form.querySelector<HTMLElement>("[role=status]")!;
+    const validation = setupFormValidation(form);
+    const uploadField = root.dataset.uploadField || "";
+    const uploadRoot = root.querySelector<HTMLElement>("[data-image-upload]");
+    const imageUpload = uploadRoot ? setupImageUpload(uploadRoot) : null;
+
+    // chip fields store the tag list in a hidden comma-separated input;
+    // the visible text input only buffers what is being typed.
+    const chipSyncs: Array<() => void> = [];
+    root.querySelectorAll<HTMLElement>("[data-chips]").forEach((group) => {
+      const store = group.querySelector<HTMLInputElement>("input[type=hidden]");
+      const buffer = group.querySelector<HTMLInputElement>(".chip-input");
+      if (!store || !buffer) return;
+      const values = () =>
+        store.value
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean);
+      const write = (list: string[]) => {
+        store.value = Array.from(new Set(list)).join(", ");
+        sync();
+      };
+      const sync = () => {
+        group
+          .querySelectorAll<HTMLElement>("[data-chip]")
+          .forEach((chip) => chip.remove());
+        for (const value of values()) {
+          const chip = document.createElement("span");
+          chip.className = "chip";
+          chip.dataset.chip = "";
+          const label = document.createElement("span");
+          label.textContent = value;
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "chip-remove";
+          remove.setAttribute("aria-label", `Hapus ${value}`);
+          remove.textContent = "×";
+          // Keep focus in the buffer so its blur/commit does not re-render the
+          // chips before this button's click handler runs.
+          remove.addEventListener("mousedown", (event) =>
+            event.preventDefault(),
+          );
+          remove.addEventListener("click", () =>
+            write(values().filter((item) => item !== value)),
+          );
+          chip.appendChild(label);
+          chip.appendChild(remove);
+          store.parentElement?.insertBefore(chip, store);
+        }
+      };
+      const commit = () => {
+        const additions = buffer.value
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean);
+        buffer.value = "";
+        if (additions.length) write([...values(), ...additions]);
+        else sync();
+      };
+      buffer.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === ",") {
+          event.preventDefault();
+          commit();
+        } else if (event.key === "Backspace" && !buffer.value) {
+          const current = values();
+          if (current.length) {
+            current.pop();
+            write(current);
+          }
+        }
+      });
+      buffer.addEventListener("blur", commit);
+      group.addEventListener("click", (event) => {
+        if (event.target === group) buffer.focus();
+      });
+      sync();
+      chipSyncs.push(sync);
+    });
+
+    const open = (row: Record<string, unknown> = {}) => {
+      form.reset();
+      status.textContent = "";
+      for (const [key, raw] of Object.entries(row)) {
+        const control = form.elements.namedItem(key) as
+          HTMLInputElement | HTMLSelectElement | null;
+        if (!control) continue;
+        if (control instanceof HTMLInputElement && control.type === "checkbox")
+          control.checked = Boolean(raw);
+        else {
+          const value = parseJsonArray(raw) ?? raw;
+          control.value = Array.isArray(value)
+            ? value.join(", ")
+            : String(value ?? "");
+        }
+      }
+      const saved = uploadField ? row[uploadField] : undefined;
+      imageUpload?.reset(typeof saved === "string" ? saved : null);
+      dialog.showModal();
+      chipSyncs.forEach((sync) => sync());
+    };
+
+    root.querySelector("[data-new]")?.addEventListener("click", () => open());
+    root
+      .querySelector("[data-close]")
+      ?.addEventListener("click", () => dialog.close());
+    root
+      .querySelectorAll<HTMLElement>("[data-edit]")
+      .forEach((button) =>
+        button.addEventListener("click", () =>
+          open(JSON.parse(button.dataset.row || "{}")),
+        ),
+      );
+
+    root.querySelectorAll<HTMLElement>("[data-delete]").forEach((button) =>
+      button.addEventListener("click", async () => {
+        if (
+          !(await confirmAction(
+            "Hapus data ini? Tindakan ini tidak dapat dibatalkan.",
+          ))
+        )
+          return;
+        const response = await request(
+          `/api/admin/${resource}/${button.dataset.delete}`,
+          { method: "DELETE" },
+        );
+        if (response.ok) location.reload();
+        else
+          await showAlert(
+            await errorMessage(response, "Gagal menghapus data."),
+          );
+      }),
+    );
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!validation.validate()) return;
+      status.textContent = "Menyimpan…";
+      const formData = new FormData(form);
+      const id = String(formData.get("id") || "");
+      formData.delete("id");
+      const image = formData.get("image");
+      formData.delete("image");
+      let uploaded: string | undefined;
+
+      if (image instanceof File && image.size) {
+        const upload = new FormData();
+        upload.set("file", image);
+        const response = await request("/api/admin/upload", {
+          method: "POST",
+          body: upload,
+        });
+        if (!response.ok) {
+          status.textContent = await errorMessage(
+            response,
+            "Gagal mengunggah gambar.",
+          );
+          return;
+        }
+        uploaded = ((await response.json()) as { key: string }).key;
+      }
+
+      const data: Record<string, unknown> = {};
+      for (const [key, value] of formData) {
+        const control = form.elements.namedItem(key) as HTMLInputElement | null;
+        if (control?.type === "checkbox") data[key] = control.checked;
+        else if (control?.type === "number")
+          data[key] = value === "" ? undefined : Number(value);
+        else if (control?.dataset.type === "tags")
+          data[key] = String(value)
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean);
+        else data[key] = value === "" ? null : String(value);
+      }
+      // Unchecked checkboxes are omitted from FormData, so read them from the form.
+      form
+        .querySelectorAll<HTMLInputElement>('input[type="checkbox"][name]')
+        .forEach((control) => {
+          data[control.name] = control.checked;
+        });
+      if (uploaded && uploadField) data[uploadField] = uploaded;
+      else if (imageUpload?.removed && uploadField) data[uploadField] = null;
+
+      const response = await request(
+        id ? `/api/admin/${resource}/${id}` : `/api/admin/${resource}`,
+        {
+          method: id ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        },
+      );
+      if (response.ok) {
+        status.textContent = "Tersimpan. Memuat ulang…";
+        location.reload();
+      } else {
+        status.textContent = await errorMessage(
+          response,
+          "Gagal menyimpan data.",
+        );
+      }
+    });
+  });
+</script>
+<style>
+  dialog {
+    max-width: min(760px, calc(100% - 2rem));
+    width: 100%;
+  }
+  dialog::backdrop {
+    background: #17130fcc;
+  }
+</style>

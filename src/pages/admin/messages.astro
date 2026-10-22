@@ -1,0 +1,92 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { list } from "@/components/adminData";
+const rows = await list("message");
+---
+
+<AdminLayout title="Pesan">
+  <h1>Kotak masuk</h1>
+  <div class="table-wrap" style="margin-top:2rem">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Pengirim</th>
+          <th>Pesan</th>
+          <th>Status</th>
+          <th>Diterima</th>
+          <th>Tindakan</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row: any) => (
+          <tr>
+            <td>
+              {row.name}
+              <br />
+              {row.email}
+            </td>
+            <td>{row.body}</td>
+            <td>{row.isRead ? "Sudah dibaca" : "Belum dibaca"}</td>
+            <td>{new Date(row.createdAt).toLocaleDateString("id-ID")}</td>
+            <td>
+              <button data-read={row.id} data-value={String(!row.isRead)}>
+                Tandai {row.isRead ? "belum dibaca" : "sudah dibaca"}
+              </button>{" "}
+              <button data-delete={row.id} style="background:var(--cream)">
+                Hapus
+              </button>
+            </td>
+          </tr>
+        ))}
+        {!rows.length && (
+          <tr>
+            <td colspan={5}>
+              Belum ada pesan. Pesan dari formulir kontak akan muncul di sini.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+  <script>
+    import { confirmAction } from "@/lib/adminDialog";
+    const token = () =>
+      document.cookie
+        .split("; ")
+        .find((v) => v.startsWith("__Host-portoku_csrf="))
+        ?.split("=")
+        .slice(1)
+        .join("=") || "";
+    const send = (url: string, init: RequestInit) =>
+      fetch(url, {
+        ...init,
+        headers: {
+          ...(init.headers || {}),
+          "Content-Type": "application/json",
+          "x-csrf-token": token(),
+        },
+      });
+    document.querySelectorAll<HTMLElement>("[data-read]").forEach((button) =>
+      button.addEventListener("click", async () => {
+        const response = await send(
+          `/api/admin/messages/${button.dataset.read}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({ isRead: button.dataset.value === "true" }),
+          },
+        );
+        if (response.ok) location.reload();
+      }),
+    );
+    document.querySelectorAll<HTMLElement>("[data-delete]").forEach((button) =>
+      button.addEventListener("click", async () => {
+        if (!(await confirmAction("Hapus pesan ini?"))) return;
+        const response = await send(
+          `/api/admin/messages/${button.dataset.delete}`,
+          { method: "DELETE" },
+        );
+        if (response.ok) location.reload();
+      }),
+    );
+  </script>
+</AdminLayout>

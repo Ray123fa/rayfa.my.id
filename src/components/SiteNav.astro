@@ -1,0 +1,75 @@
+---
+import { Menu } from "lucide-react";
+const { admin = false } = Astro.props;
+const path = Astro.url.pathname.replace(/\/$/, "") || "/";
+const current = (href: string) => path === href ? "page" : undefined;
+---
+
+<header class="topbar">
+  <a class="logo" href="/" aria-label="Beranda Portoku">
+    RK<span style="color:var(--orange)">●</span>
+  </a>
+  <nav class="nav" id="site-nav" aria-label="Navigasi utama">
+    <a href="/" aria-current={current("/")}>
+      Beranda
+    </a>
+    <a href="/about" aria-current={current("/about")}>
+      Tentang
+    </a>
+    <a href="/projects" aria-current={current("/projects")}>
+      Proyek
+    </a>
+    <a href="/contact" aria-current={current("/contact")}>
+      Kontak
+    </a>
+    {admin && <a href="/admin">Admin</a>}
+  </nav>
+  <a class="button" href="/contact">
+    Mari berdiskusi ↗
+  </a>
+  <button
+    class="menu"
+    aria-label="Buka navigasi"
+    aria-expanded="false"
+    aria-controls="site-nav"
+    data-menu
+  >
+    <Menu size={24} aria-hidden="true" />
+  </button>
+</header>
+<script>
+  const button = document.querySelector<HTMLButtonElement>("[data-menu]");
+  const nav = document.querySelector<HTMLElement>("#site-nav");
+  button?.addEventListener("click", () => {
+    if (!nav) return;
+    const opened = nav.getAttribute("data-open") === "true";
+    nav.setAttribute("data-open", String(!opened));
+    button.setAttribute("aria-expanded", String(!opened));
+    button.setAttribute("aria-label", opened ? "Buka navigasi" : "Tutup navigasi");
+  });
+  nav?.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => {
+      nav.setAttribute("data-open", "false");
+      button?.setAttribute("aria-expanded", "false");
+      button?.setAttribute("aria-label", "Buka navigasi");
+    });
+  });
+</script>
+<style>
+  .nav[data-open="true"] {
+    display: grid;
+    position: absolute;
+    z-index: 5;
+    top: 78px;
+    left: 0;
+    right: 0;
+    padding: 1rem 1.25rem;
+    background: var(--cream);
+    border-bottom: 3px solid var(--ink);
+  }
+  @media (min-width: 701px) {
+    .menu {
+      display: none !important;
+    }
+  }
+</style>

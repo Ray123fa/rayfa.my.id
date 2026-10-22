@@ -1,0 +1,204 @@
+---
+interface Props {
+  name: string;
+  label: string;
+  idPrefix: string;
+  required?: boolean;
+}
+const { name, label, idPrefix, required = false } = Astro.props;
+const hintId = `${idPrefix}-${name}-hint`;
+---
+
+<div class="wide upload" data-image-upload>
+  <span class="upload-label" id={hintId}>
+    {label}{" "}
+    {required ? (
+      <span class="required-mark">*</span>
+    ) : (
+      <span class="field-note">(opsional)</span>
+    )}
+  </span>
+  <span class="upload-help">JPEG, PNG, atau WEBP. Maksimal 5 MB.</span>
+  <label class="dropzone" data-dropzone>
+    <input
+      class="sr-only"
+      type="file"
+      name={name}
+      accept="image/jpeg,image/png,image/webp"
+      aria-describedby={hintId}
+      required={required}
+    />
+    <span class="dropzone-empty" data-dropzone-empty>
+      <span class="dropzone-icon" aria-hidden="true">
+        ↑
+      </span>
+      <span class="dropzone-title">
+        Letakkan gambar di sini atau <u>pilih berkas</u>
+      </span>
+      <span class="dropzone-placeholder">Belum ada gambar dipilih</span>
+    </span>
+    <span class="dropzone-preview" data-dropzone-preview hidden>
+      <img data-preview-image src="data:," alt="Pratinjau gambar terpilih" />
+      <span class="preview-meta">
+        <strong data-preview-name></strong>
+        <span data-preview-size></span>
+      </span>
+    </span>
+  </label>
+  <div class="upload-foot">
+    <button type="button" class="remove-image" data-image-clear hidden>
+      Hapus gambar
+    </button>
+    <span class="upload-error" role="alert" data-file-error></span>
+  </div>
+</div>
+
+<style>
+  .upload {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .upload-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .required-mark {
+    color: #b42318;
+  }
+  .field-note,
+  .upload-help,
+  .dropzone-placeholder {
+    color: var(--muted-foreground);
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+  .dropzone {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 1rem;
+    background: var(--card);
+    border: 3px solid var(--ink);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    font-size: 1rem;
+    font-weight: 500;
+    letter-spacing: normal;
+    text-transform: none;
+    text-align: center;
+    cursor: pointer;
+    transition:
+      transform 120ms ease,
+      box-shadow 120ms ease;
+  }
+  .dropzone::before {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    border: 2px dashed var(--ink);
+    border-radius: 3px;
+    opacity: 0.45;
+  }
+  .dropzone > * {
+    pointer-events: none;
+  }
+  .dropzone:hover,
+  .dropzone.is-dragging,
+  .dropzone:focus-within {
+    transform: translate(4px, 4px);
+    box-shadow: none;
+  }
+  .dropzone:focus-within {
+    outline: 3px solid var(--primary);
+    outline-offset: 3px;
+  }
+  .dropzone.is-dragging {
+    background: var(--secondary);
+  }
+  .dropzone.is-dragging::before {
+    border-color: var(--primary);
+    opacity: 1;
+  }
+  .dropzone-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0;
+  }
+  .dropzone-icon {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-bottom: 0.35rem;
+    background: var(--primary);
+    border: 3px solid var(--ink);
+    border-radius: 999px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .dropzone-title {
+    font-weight: 700;
+  }
+  .dropzone-preview {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+    padding: 0.25rem;
+    text-align: left;
+  }
+  .dropzone-preview img {
+    flex: none;
+    width: 96px;
+    height: 72px;
+    object-fit: cover;
+    background: var(--cream);
+    border: 3px solid var(--ink);
+    border-radius: var(--radius);
+  }
+  .preview-meta {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+  .preview-meta strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .preview-meta span {
+    font-size: 0.8rem;
+    color: var(--muted-foreground);
+  }
+  .upload-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 1.5rem;
+  }
+  .remove-image {
+    padding: 0.35rem 0.7rem;
+    background: var(--cream);
+    font-size: 0.8rem;
+  }
+  .upload-error {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #b42318;
+  }
+  .dropzone-preview[hidden],
+  .dropzone-empty[hidden],
+  .remove-image[hidden] {
+    display: none;
+  }
+</style>

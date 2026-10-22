@@ -1,0 +1,60 @@
+---
+import "../styles/globals.css";
+import SiteNav from "@/components/SiteNav.astro";
+import { env } from "cloudflare:workers";
+interface Props {
+  title: string;
+  description?: string;
+  image?: string;
+  noindex?: boolean;
+}
+const {
+  title,
+  description = "Portofolio pribadi. Karya digital yang dirancang dengan sepenuh hati.",
+  image,
+  noindex = false,
+} = Astro.props;
+const canonical = new URL(
+  Astro.url.pathname,
+  env.PUBLIC_SITE_URL || Astro.url.origin,
+);
+---
+
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <title>{title} — Portoku</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    {image && (
+      <meta property="og:image" content={new URL(image, canonical).href} />
+    )}
+    <meta name="twitter:card" content="summary_large_image" />
+    {noindex && <meta name="robots" content="noindex,nofollow" />}
+  </head>
+  <body>
+    <a class="skip" href="#main">
+      Langsung ke konten
+    </a>
+    <div class="site-shell">
+      <SiteNav />
+      <main id="main">
+        <slot />
+      </main>
+      <footer class="footer">
+        <span>© {new Date().getFullYear()} Portoku. Dibuat dengan sepenuh hati.</span>
+        <a href="/#kontak">Punya ide untuk diwujudkan? ↗</a>
+      </footer>
+    </div>
+  </body>
+</html>

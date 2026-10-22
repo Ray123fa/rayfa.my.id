@@ -1,0 +1,22 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import AdminCrud from "@/components/AdminCrud.astro";
+import { list } from "@/components/adminData";
+const rows = await list("education", [{ sortOrder: "asc" }, { id: "asc" }]);
+---
+
+<AdminLayout title="Pendidikan">
+  <AdminCrud
+    resource="educations"
+    title="Pendidikan"
+    uploadField="logoKey"
+    fields={[
+      { name: "title", required: true },
+      { name: "institution", required: true },
+      { name: "period", required: true },
+      { name: "sortOrder", type: "number", required: true },
+    ]}
+    columns={["title", "institution", "period", "sortOrder"]}
+    rows={rows}
+  />
+</AdminLayout>

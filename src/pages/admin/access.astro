@@ -1,0 +1,91 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { list } from "@/components/adminData";
+const rows = await list("adminEmail", { createdAt: "asc" });
+---
+
+<AdminLayout title="Akses">
+  <h1>Daftar akses admin</h1>
+  <form class="panel" data-access style="margin:2rem 0">
+    <label>
+      <span>Email <span class="required-mark">*</span></span>
+      <input
+        name="email"
+        type="email"
+        required
+        maxlength="254"
+        placeholder="admin@example.com"
+      />
+    </label>
+    <button style="margin-top:1rem">Tambah email ↗</button>
+    <p role="status"></p>
+  </form>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Jenis</th>
+        <th>Ditambahkan</th>
+        <th>Tindakan</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((row: any) => (
+        <tr>
+          <td>{row.email}</td>
+          <td>{row.isDefault ? "Bawaan" : "Ditambahkan"}</td>
+          <td>{new Date(row.createdAt).toLocaleDateString("id-ID")}</td>
+          <td>
+            {!row.isDefault && rows.length > 1 && (
+              <button type="button" data-remove={row.id}>
+                Hapus
+              </button>
+            )}
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+  <script>
+    import { confirmAction, showAlert } from "@/lib/adminDialog";
+    import { setupFormValidation } from "@/lib/adminFormValidation";
+    const csrf = () =>
+      document.cookie
+        .split("; ")
+        .find((v) => v.startsWith("__Host-portoku_csrf="))
+        ?.split("=")
+        .slice(1)
+        .join("=") || "";
+    const form = document.querySelector<HTMLFormElement>("[data-access]")!;
+    const validation = setupFormValidation(form);
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!validation.validate()) return;
+      const response = await fetch("/api/admin/access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-csrf-token": csrf() },
+        body: JSON.stringify({ email: new FormData(form).get("email") }),
+      });
+      if (response.ok) location.reload();
+      else
+        form.querySelector("[role=status]")!.textContent =
+          "Gagal menambahkan email.";
+    });
+    document.querySelectorAll<HTMLElement>("[data-remove]").forEach((button) =>
+      button.addEventListener("click", async () => {
+        if (
+          !(await confirmAction(
+            "Hapus email admin ini? Sesi yang aktif akan kehilangan akses.",
+          ))
+        )
+          return;
+        const response = await fetch(
+          `/api/admin/access/${button.dataset.remove}`,
+          { method: "DELETE", headers: { "x-csrf-token": csrf() } },
+        );
+        if (response.ok) location.reload();
+        else await showAlert("Email ini tidak dapat dihapus.");
+      }),
+    );
+  </script>
+</AdminLayout>

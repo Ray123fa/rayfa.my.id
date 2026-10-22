@@ -1,0 +1,39 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { db } from "@/components/content";
+let stats = { projects: 0, messages: 0, skills: 0, admins: 0 };
+try {
+  const d = db();
+  const [projects, messages, skills, admins] = await Promise.all([
+    d.project.count(),
+    d.message.count({ where: { isRead: false } }),
+    d.skill.count(),
+    d.adminEmail.count(),
+  ]);
+  stats = { projects, messages, skills, admins };
+} catch {}
+---
+
+<AdminLayout title="Ringkasan">
+  <p class="eyebrow">Sekilas ringkasan</p>
+  <h1 style="font-size:clamp(3rem,7vw,7rem);margin-bottom:2rem">
+    Selamat datang.
+  </h1>
+  <div class="admin-cards">
+    {Object.entries(stats).map(([label, value]) => (
+      <article class="admin-card">
+        <span>{({ projects: "Proyek", messages: "Pesan belum dibaca", skills: "Keahlian", admins: "Admin" }[label as keyof typeof stats]).toUpperCase()}</span>
+        <h2 style="font-size:4rem">{value}</h2>
+      </article>
+    ))}
+  </div>
+  <section class="section">
+    <div class="panel orange">
+      <h2>Kelola konten</h2>
+      <p>
+        Pilih modul dari panel samping. Perubahan yang dipublikasikan langsung tampil
+        di situs publik.
+      </p>
+    </div>
+  </section>
+</AdminLayout>

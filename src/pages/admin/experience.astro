@@ -1,0 +1,23 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import AdminCrud from "@/components/AdminCrud.astro";
+import { list } from "@/components/adminData";
+const rows = await list("experience", { sortOrder: "asc" });
+---
+
+<AdminLayout title="Pengalaman">
+  <AdminCrud
+    resource="experiences"
+    title="Pengalaman"
+    fields={[
+      { name: "title", required: true },
+      { name: "organization", required: true },
+      { name: "startDate", required: true },
+      { name: "endDate" },
+      { name: "description", type: "textarea" },
+      { name: "sortOrder", type: "number", required: true },
+    ]}
+    columns={["title", "organization", "startDate", "endDate"]}
+    rows={rows}
+  />
+</AdminLayout>
