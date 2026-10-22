@@ -84,7 +84,7 @@ const href = (target: number) => {
           <span class="tag" style="align-self:flex-start">
             {project.year}
           </span>
-          <h3>{project.title}</h3>
+          <h2>{project.title}</h2>
           <p>{project.description}</p>
           <div class="tags">
             {strings(project.techStack).map((tag) => (
@@ -109,11 +109,11 @@ const href = (target: number) => {
 
     {!visible.length && (
       <div class="panel">
-        <h3>
+        <h2>
           {filter
             ? `Belum ada proyek dengan tag “${filter}”.`
             : "Belum ada proyek yang dipublikasikan."}
-        </h3>
+        </h2>
         <p>
           {filter ? "Coba tag lain atau lihat semua proyek." : "Silakan kunjungi kembali nanti."}
         </p>
@@ -148,3 +148,10 @@ const href = (target: number) => {
     )}
   </section>
 </PublicLayout>
+
+<style>
+  .card h2 {
+    margin: 0;
+    font-size: 1.35rem;
+  }
+</style>
