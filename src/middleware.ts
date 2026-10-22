@@ -11,7 +11,7 @@ const securityHeaders: Record<string, string> = {
   "permissions-policy": "camera=(), microphone=(), geolocation=()",
   "strict-transport-security": "max-age=31536000; includeSubDomains",
   "content-security-policy":
-    "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; script-src 'self'",
+    "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com",
 };
 
 function applyHeaders(response: Response, headers: Headers) {
@@ -26,6 +26,17 @@ function applyHeaders(response: Response, headers: Headers) {
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const headers = new Headers(securityHeaders);
+  // Cloudflare copies this per-response nonce onto its injected bot-detection scripts.
+  const nonce = btoa(
+    String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))),
+  );
+  headers.set(
+    "content-security-policy",
+    securityHeaders["content-security-policy"].replace(
+      "script-src 'self'",
+      `script-src 'self' 'nonce-${nonce}'`,
+    ),
+  );
   const path = context.url.pathname;
   const adminPage = path.startsWith("/admin") && path !== "/admin/login";
   const adminApi = path.startsWith("/api/admin");

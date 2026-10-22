@@ -7,7 +7,13 @@ const current = (href: string) => path === href ? "page" : undefined;
 
 <header class="topbar">
   <a class="logo" href="/" aria-label="Beranda Portoku">
-    <img src="/logo.png" alt="Rayhan’s Portfolio" width="80" height="64" />
+    <img
+      src="/logo-160.webp"
+      srcset="/logo-160.webp 2x, /logo-240.webp 3x"
+      alt="Rayhan’s Portfolio"
+      width="80"
+      height="64"
+    />
   </a>
   <nav class="nav" id="site-nav" aria-label="Navigasi utama">
     <a href="/" aria-current={current("/")}>
