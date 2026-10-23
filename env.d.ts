@@ -1,5 +1,9 @@
 /// <reference types="astro/client" />
 /// <reference types="@cloudflare/workers-types" />
+
+// Astro resolves this virtual module through Vite for client initialization.
+declare module "astro:scripts/before-hydration.js" {}
+
 interface AppEnv {
   DB: D1Database;
   BUCKET: R2Bucket;

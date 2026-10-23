@@ -21,9 +21,9 @@ export default defineConfig({
     // Keep even small processed scripts external for script-src 'self'.
     build: { assetsInlineLimit: 0 },
     plugins: [tailwindcss()],
-    // Arctic is native ESM; load it directly instead of caching an SSR prebundle.
+    // Load these ESM packages directly to avoid stale SSR optimizer chunks.
     optimizeDeps: {
-      exclude: ["arctic"],
+      exclude: ["arctic", "@prisma/adapter-d1"],
     },
   },
 });

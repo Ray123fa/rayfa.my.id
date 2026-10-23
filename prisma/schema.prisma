@@ -71,7 +71,8 @@ model Education {
   id String @id @default(cuid())
   title String
   institution String
-  period String
+  startYear Int
+  endYear Int?
   logoKey String?
   sortOrder Int @default(0)
 }
