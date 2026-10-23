@@ -49,18 +49,18 @@ export default function AdminAlertDialog({
         <div className="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           {options.confirm && (
             <AlertDialogButton
-              ref={cancel}
-              style={{ background: "var(--secondary-background)" }}
-              onClick={() => finish(false)}
+              ref={options.confirm ? undefined : cancel}
+              onClick={() => finish(true)}
             >
-              Batal
+              {options.confirm ? "Hapus" : "Mengerti"}
             </AlertDialogButton>
           )}
           <AlertDialogButton
-            ref={options.confirm ? undefined : cancel}
-            onClick={() => finish(true)}
+            ref={cancel}
+            style={{ background: "var(--secondary-background)" }}
+            onClick={() => finish(false)}
           >
-            {options.confirm ? "Hapus" : "Mengerti"}
+            Batal
           </AlertDialogButton>
         </div>
       </AlertDialogContent>

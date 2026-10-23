@@ -9,6 +9,11 @@ interface Props {
   rows?: Record<string, any>[];
   columns?: string[];
   uploadField?: string;
+  filter?: {
+    name: string;
+    label: string;
+    options: { value: string; label: string }[];
+  };
 }
 const {
   resource,
@@ -17,7 +22,11 @@ const {
   rows = [],
   columns = fields.map((f) => f.name).slice(0, 4),
   uploadField,
+  filter,
 } = Astro.props;
+
+const allRows = JSON.stringify(rows);
+
 // Consecutive fields marked inline:true share a single row, e.g. number + checkboxes.
 const groups = fields.reduce<Array<{ inline: boolean; items: Field[] }>>(
   (groups, field) => {
@@ -30,15 +39,32 @@ const groups = fields.reduce<Array<{ inline: boolean; items: Field[] }>>(
 );
 ---
 
-<section data-crud={resource} data-upload-field={uploadField || ""}>
+<section
+  data-crud={resource}
+  data-upload-field={uploadField || ""}
+  data-all-rows={allRows}
+>
   <div class="section-head">
     <div>
       <p class="eyebrow">Modul admin</p>
       <h1>{title}</h1>
     </div>
-    <button type="button" data-new>
-      Tambah data
-    </button>
+    <div class="flex gap-4 items-center">
+      {filter && (
+        <label>
+          <span class="sr-only">{filter.label}</span>
+          <select data-filter={filter.name} class="min-w-[180px]">
+            <option value="">{filter.label}</option>
+            {filter.options.map((option) => (
+              <option value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+      )}
+      <button type="button" data-new class="shrink-0">
+        Tambah data
+      </button>
+    </div>
   </div>
 
   <dialog
@@ -47,8 +73,8 @@ const groups = fields.reduce<Array<{ inline: boolean; items: Field[] }>>(
     aria-labelledby={`${resource}-editor-title`}
   >
     <form method="dialog" class="form-grid" data-form novalidate>
-      <h2 class="wide" id={`${resource}-editor-title`}>
-        Ubah {title}
+      <h2 class="wide" id={`${resource}-editor-title`} data-editor-title>
+        Tambah {title}
       </h2>
       <input type="hidden" name="id" />
       {groups.map((group) =>
@@ -68,9 +94,9 @@ const groups = fields.reduce<Array<{ inline: boolean; items: Field[] }>>(
         <ImageDropzone name="image" label="Gambar" idPrefix={resource} />
       )}
       <p class="wide" role="status"></p>
-      <div class="wide" style="display:flex;gap:1rem">
+      <div class="wide flex gap-4">
         <button type="submit">Simpan ↗</button>
-        <button type="button" data-close style="background:var(--cream)">
+        <button type="button" data-close class="bg-cream!">
           Batal
         </button>
       </div>
@@ -87,9 +113,9 @@ const groups = fields.reduce<Array<{ inline: boolean; items: Field[] }>>(
           <th>Tindakan</th>
         </tr>
       </thead>
-      <tbody>
-        {rows.map((row) => (
-          <tr>
+      <tbody data-table-body>
+        {rows.map((row, idx) => (
+          <tr data-row>
             {columns.map((col) => (
               <td>
                 {col === "kind"
@@ -104,56 +130,44 @@ const groups = fields.reduce<Array<{ inline: boolean; items: Field[] }>>(
               </td>
             ))}
             <td>
-              <button type="button" data-edit data-row={JSON.stringify(row)}>
+              <button type="button" data-edit data-row-index={idx}>
                 Ubah
               </button>
-              <button
-                type="button"
-                data-delete={row.id}
-                style="background:var(--cream)"
-              >
+              <button type="button" data-delete={row.id} class="bg-cream!">
                 Hapus
               </button>
             </td>
           </tr>
         ))}
         {!rows.length && (
-          <tr>
+          <tr data-empty>
             <td colspan={columns.length + 1}>
-              Belum ada data. Pilih “Tambah data” untuk menambahkan.
+              Belum ada data. Pilih "Tambah data" untuk menambahkan.
             </td>
           </tr>
         )}
       </tbody>
     </table>
   </div>
+  <div class="pagination" data-pagination hidden>
+    <button type="button" data-prev disabled>
+      ← Sebelumnya
+    </button>
+    <span data-page-info></span>
+    <button type="button" data-next>
+      Berikutnya →
+    </button>
+  </div>
 </section>
 <script>
-  import { confirmAction, showAlert } from "@/lib/adminDialog";
   import { setupImageUpload } from "@/lib/imageUpload";
   import { setupFormValidation } from "@/lib/adminFormValidation";
-
-  const csrf = () =>
-    document.cookie
-      .split("; ")
-      .find((value) => value.startsWith("__Host-portoku_csrf="))
-      ?.split("=")
-      .slice(1)
-      .join("=") || "";
-  const request = (url: string, init: RequestInit = {}) =>
-    fetch(url, {
-      ...init,
-      headers: { ...(init.headers || {}), "x-csrf-token": csrf() },
-    });
-  const errorMessage = async (response: Response, fallback: string) => {
-    const payload = (await response.json().catch(() => null)) as {
-      error?: string;
-      detail?: string;
-    } | null;
-    if (payload?.error === "CSRF")
-      return "Sesi tidak valid. Muat ulang halaman dan coba lagi.";
-    return payload?.error || payload?.detail || fallback;
-  };
+  import {
+    adminRequest,
+    uploadImage,
+    deleteResource,
+    getErrorMessage,
+  } from "@/lib/client/adminApi";
   const parseJsonArray = (value: unknown): string[] | null => {
     if (Array.isArray(value))
       return value.filter((item): item is string => typeof item === "string");
@@ -173,7 +187,12 @@ const groups = fields.reduce<Array<{ inline: boolean; items: Field[] }>>(
     const dialog = root.querySelector<HTMLDialogElement>("[data-editor]")!;
     const form = root.querySelector<HTMLFormElement>("[data-form]")!;
     const status = form.querySelector<HTMLElement>("[role=status]")!;
+    const editorTitle = form.querySelector<HTMLElement>("[data-editor-title]")!;
     const validation = setupFormValidation(form);
+    const submit = form.querySelector<HTMLButtonElement>(
+      'button[type="submit"]',
+    )!;
+    let saving = false;
     const uploadField = root.dataset.uploadField || "";
     const uploadRoot = root.querySelector<HTMLElement>("[data-image-upload]");
     const imageUpload = uploadRoot ? setupImageUpload(uploadRoot) : null;
@@ -252,6 +271,7 @@ const groups = fields.reduce<Array<{ inline: boolean; items: Field[] }>>(
     });
 
     const open = (row: Record<string, unknown> = {}) => {
+      editorTitle.textContent = `${row.id ? "Ubah" : "Tambah"} ${root.querySelector(".section-head h1")?.textContent || ""}`;
       form.reset();
       status.textContent = "";
       for (const [key, raw] of Object.entries(row)) {
@@ -271,116 +291,176 @@ const groups = fields.reduce<Array<{ inline: boolean; items: Field[] }>>(
       imageUpload?.reset(typeof saved === "string" ? saved : null);
       dialog.showModal();
       chipSyncs.forEach((sync) => sync());
+      form.dispatchEvent(new Event("admin:sync-selects"));
     };
 
     root.querySelector("[data-new]")?.addEventListener("click", () => open());
     root
       .querySelector("[data-close]")
       ?.addEventListener("click", () => dialog.close());
+    root.querySelectorAll<HTMLElement>("[data-edit]").forEach((button) => {
+      const allRowsData = JSON.parse(root.dataset.allRows || "[]");
+      button.addEventListener("click", () => {
+        const idx = Number(button.dataset.rowIndex);
+        open(allRowsData[idx] || {});
+      });
+    });
+
     root
-      .querySelectorAll<HTMLElement>("[data-edit]")
+      .querySelectorAll<HTMLElement>("[data-delete]")
       .forEach((button) =>
         button.addEventListener("click", () =>
-          open(JSON.parse(button.dataset.row || "{}")),
+          deleteResource(
+            `/api/admin/${resource}/${button.dataset.delete}`,
+            "Hapus data ini? Tindakan ini tidak dapat dibatalkan.",
+          ),
         ),
       );
 
-    root.querySelectorAll<HTMLElement>("[data-delete]").forEach((button) =>
-      button.addEventListener("click", async () => {
-        if (
-          !(await confirmAction(
-            "Hapus data ini? Tindakan ini tidak dapat dibatalkan.",
-          ))
-        )
-          return;
-        const response = await request(
-          `/api/admin/${resource}/${button.dataset.delete}`,
-          { method: "DELETE" },
-        );
-        if (response.ok) location.reload();
-        else
-          await showAlert(
-            await errorMessage(response, "Gagal menghapus data."),
-          );
-      }),
-    );
-
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (saving) return;
       if (!validation.validate()) return;
+      saving = true;
+      submit.disabled = true;
       status.textContent = "Menyimpan…";
-      const formData = new FormData(form);
-      const id = String(formData.get("id") || "");
-      formData.delete("id");
-      const image = formData.get("image");
-      formData.delete("image");
-      let uploaded: string | undefined;
+      try {
+        const formData = new FormData(form);
+        const id = String(formData.get("id") || "");
+        formData.delete("id");
+        const image = formData.get("image");
+        formData.delete("image");
+        let uploaded: string | undefined;
 
-      if (image instanceof File && image.size) {
-        const upload = new FormData();
-        upload.set("file", image);
-        const response = await request("/api/admin/upload", {
-          method: "POST",
-          body: upload,
-        });
-        if (!response.ok) {
-          status.textContent = await errorMessage(
-            response,
-            "Gagal mengunggah gambar.",
-          );
-          return;
+        if (image instanceof File && image.size) {
+          uploaded = await uploadImage(image);
         }
-        uploaded = ((await response.json()) as { key: string }).key;
-      }
 
-      const data: Record<string, unknown> = {};
-      for (const [key, value] of formData) {
-        const control = form.elements.namedItem(key) as HTMLInputElement | null;
-        if (control?.type === "checkbox") data[key] = control.checked;
-        else if (control?.type === "number")
-          data[key] = value === "" ? undefined : Number(value);
-        else if (control?.dataset.type === "tags")
-          data[key] = String(value)
-            .split(",")
-            .map((item) => item.trim())
-            .filter(Boolean);
-        else data[key] = value === "" ? null : String(value);
-      }
-      // Unchecked checkboxes are omitted from FormData, so read them from the form.
-      form
-        .querySelectorAll<HTMLInputElement>('input[type="checkbox"][name]')
-        .forEach((control) => {
-          data[control.name] = control.checked;
-        });
-      if (uploaded && uploadField) data[uploadField] = uploaded;
-      else if (imageUpload?.removed && uploadField) data[uploadField] = null;
+        const data: Record<string, unknown> = {};
+        for (const [key, value] of formData) {
+          const control = form.elements.namedItem(
+            key,
+          ) as HTMLInputElement | null;
+          if (control?.type === "checkbox") data[key] = control.checked;
+          else if (control?.type === "number")
+            data[key] = value === "" ? undefined : Number(value);
+          else if (control?.dataset.type === "tags")
+            data[key] = String(value)
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean);
+          else data[key] = value === "" ? null : String(value);
+        }
+        // Unchecked checkboxes are omitted from FormData, so read them from the form.
+        form
+          .querySelectorAll<HTMLInputElement>('input[type="checkbox"][name]')
+          .forEach((control) => {
+            data[control.name] = control.checked;
+          });
+        if (uploaded && uploadField) data[uploadField] = uploaded;
+        else if (imageUpload?.removed && uploadField) data[uploadField] = null;
 
-      const response = await request(
-        id ? `/api/admin/${resource}/${id}` : `/api/admin/${resource}`,
-        {
-          method: id ? "PUT" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        },
-      );
-      if (response.ok) {
-        status.textContent = "Tersimpan. Memuat ulang…";
-        location.reload();
-      } else {
-        status.textContent = await errorMessage(
-          response,
-          "Gagal menyimpan data.",
+        const response = await adminRequest(
+          id ? `/api/admin/${resource}/${id}` : `/api/admin/${resource}`,
+          {
+            method: id ? "PUT" : "POST",
+            body: JSON.stringify(data),
+          },
         );
+        if (response.ok) {
+          location.href =
+            location.pathname +
+            `?status=berhasil&action=${id ? "edit" : "tambah"}`;
+        } else {
+          throw new Error(
+            await getErrorMessage(response, "Gagal menyimpan data."),
+          );
+        }
+      } catch (error) {
+        status.textContent =
+          error instanceof Error
+            ? error.message
+            : "Gagal menyimpan data. Silakan coba lagi.";
+      } finally {
+        saving = false;
+        submit.disabled = false;
       }
     });
   });
+
+  // Pagination
+  document.querySelectorAll<HTMLElement>("[data-crud]").forEach((root) => {
+    const tbody = root.querySelector<HTMLElement>("[data-table-body]");
+    const pagination = root.querySelector<HTMLElement>("[data-pagination]");
+    const pageInfo = pagination?.querySelector<HTMLElement>("[data-page-info]");
+    const prevBtn = pagination?.querySelector<HTMLButtonElement>("[data-prev]");
+    const nextBtn = pagination?.querySelector<HTMLButtonElement>("[data-next]");
+    const filterSelect = root.querySelector(
+      "[data-filter]",
+    ) as HTMLSelectElement | null;
+    const emptyRow = tbody?.querySelector<HTMLElement>("[data-empty]");
+    if (!tbody || !pagination || !pageInfo || !prevBtn || !nextBtn) return;
+
+    const PER_PAGE = 15;
+    let currentPage = 1;
+    let filteredRows: HTMLElement[] = [];
+
+    const allRows = () =>
+      Array.from(tbody.querySelectorAll<HTMLElement>("[data-row]"));
+
+    const applyFilter = () => {
+      const filterValue = filterSelect?.value || "";
+      const filterAttr = filterSelect?.dataset.filter;
+      const rows = allRows();
+      const allRowsData = JSON.parse(root.dataset.allRows || "[]");
+
+      filteredRows = rows.filter((_, idx) => {
+        if (!filterValue || !filterAttr) return true;
+        const rowData = allRowsData[idx];
+        return String(rowData[filterAttr]) === filterValue;
+      });
+      currentPage = 1;
+      render();
+    };
+
+    const render = () => {
+      const total = filteredRows.length;
+      const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+      currentPage = Math.min(currentPage, totalPages);
+
+      const start = (currentPage - 1) * PER_PAGE;
+      const end = start + PER_PAGE;
+
+      allRows().forEach((row) => (row.hidden = true));
+      filteredRows.slice(start, end).forEach((row) => (row.hidden = false));
+
+      if (emptyRow) emptyRow.hidden = total > 0;
+      pagination.hidden = total <= PER_PAGE;
+
+      pageInfo.textContent = `Halaman ${currentPage} dari ${totalPages}`;
+      prevBtn.disabled = currentPage === 1;
+      nextBtn.disabled = currentPage === totalPages;
+    };
+
+    prevBtn.addEventListener("click", () => {
+      if (currentPage > 1) {
+        currentPage--;
+        render();
+      }
+    });
+
+    nextBtn.addEventListener("click", () => {
+      const totalPages = Math.ceil(filteredRows.length / PER_PAGE);
+      if (currentPage < totalPages) {
+        currentPage++;
+        render();
+      }
+    });
+
+    if (filterSelect) {
+      filterSelect.addEventListener("change", applyFilter);
+    }
+
+    applyFilter();
+  });
 </script>
-<style>
-  dialog {
-    max-width: min(760px, calc(100% - 2rem));
-    width: 100%;
-  }
-  dialog::backdrop {
-    background: #17130fcc;
-  }
-</style>

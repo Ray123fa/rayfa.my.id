@@ -1,5 +1,6 @@
 ---
 import "../styles/globals.css";
+import "../styles/components.css";
 interface Props {
   title: string;
 }
@@ -60,7 +61,7 @@ const sections = [
           </svg>
         </button>
         <a class="logo" href="/admin">
-          RK● / KENDALI
+          RF● / KENDALI
         </a>
         <nav aria-label="Navigasi admin">
           {sections.map(([name, path]) => (
@@ -72,13 +73,13 @@ const sections = [
             </a>
           ))}
         </nav>
-        <a href="/" style="display:block;margin-top:2rem">
+        <a href="/" class="block mt-8">
           ← Situs publik
         </a>
       </aside>
       <div class="sidebar-backdrop" data-sidebar-backdrop hidden></div>
       <div class="admin-main">
-        <header style="display:flex;align-items:center;justify-content:space-between;gap:1rem;border-bottom:3px solid;padding-bottom:1.5rem;margin-bottom:2rem">
+        <header class="flex items-center justify-between gap-4 border-b-[3px] pb-6 mb-8">
           <button
             type="button"
             class="sidebar-toggle"
@@ -114,21 +115,16 @@ const sections = [
     <script>
       import { showAlert } from "@/lib/adminDialog";
       import { setupAdminSidebar } from "@/lib/adminSidebar";
+      import { mountToaster } from "@/lib/client/toaster";
+      import { fetchWithCsrf } from "@/lib/client/csrf";
       setupAdminSidebar();
+      void mountToaster();
       document
         .querySelector<HTMLFormElement>('form[action="/api/auth/logout"]')
         ?.addEventListener("submit", async (event) => {
           event.preventDefault();
-          const token =
-            document.cookie
-              .split("; ")
-              .find((value) => value.startsWith("__Host-portoku_csrf="))
-              ?.split("=")
-              .slice(1)
-              .join("=") || "";
-          const response = await fetch("/api/auth/logout", {
+          const response = await fetchWithCsrf("/api/auth/logout", {
             method: "POST",
-            headers: { "x-csrf-token": token },
           });
           if (response.ok) location.href = "/admin/login";
           else await showAlert("Gagal keluar. Silakan coba lagi.");
@@ -136,68 +132,3 @@ const sections = [
     </script>
   </body>
 </html>
-
-<style>
-  .sidebar-close {
-    display: none;
-  }
-  .sidebar-toggle,
-  .sidebar-close {
-    align-items: center;
-    justify-content: center;
-    padding: 0.65rem;
-    min-width: 44px;
-    min-height: 44px;
-  }
-  .sidebar-toggle:not([hidden]) {
-    display: inline-flex;
-  }
-  .admin-main > header > strong {
-    flex: 1;
-  }
-  .admin-layout[data-sidebar-ready][data-sidebar-open="false"] {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .admin-layout[data-sidebar-ready][data-sidebar-open="false"] > .admin-side {
-    display: none;
-  }
-  @media (max-width: 800px) {
-    .admin-layout[data-sidebar-ready] > .admin-side {
-      position: fixed;
-      inset: 0 auto 0 0;
-      width: min(280px, 85vw);
-      height: 100dvh;
-      z-index: 21;
-      border-right: 3px solid var(--ink);
-      border-bottom: 0;
-      animation: sidebar-enter 180ms ease-out;
-    }
-    .admin-layout[data-sidebar-ready] .admin-side nav {
-      grid-template-columns: 1fr;
-    }
-    .admin-layout[data-sidebar-ready] .sidebar-close {
-      display: inline-flex;
-      align-self: flex-end;
-      margin-bottom: 0.5rem;
-    }
-    .sidebar-backdrop:not([hidden]) {
-      position: fixed;
-      inset: 0;
-      z-index: 20;
-      background: var(--overlay);
-    }
-  }
-  @keyframes sidebar-enter {
-    from {
-      transform: translateX(-100%);
-    }
-    to {
-      transform: translateX(0);
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .admin-layout[data-sidebar-ready] > .admin-side {
-      animation: none;
-    }
-  }
-</style>

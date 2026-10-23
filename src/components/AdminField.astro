@@ -21,6 +21,8 @@ export interface Field {
   inline?: boolean;
   /** Span both form columns. */
   wide?: boolean;
+  min?: number;
+  max?: number;
   options?: (string | Option)[];
 }
 interface Props {
@@ -92,9 +94,11 @@ const placeholder = examples[field.name] || `Masukkan ${caption.toLowerCase()}`;
       <input name={field.name} type="checkbox" />
     ) : field.type === "select" ? (
       <select name={field.name} required={field.required}>
-        <option value="">Pilih {caption.toLowerCase()}…</option>
-        {field.options?.map((option) => (
-          <option value={optionValue(option)}>{optionLabel(option)}</option>
+        <option value="">{`Pilih ${caption.toLowerCase()}…`}</option>
+        {(field.options || []).map((option) => (
+          <option value={optionValue(option)}>
+            {optionLabel(option)}
+          </option>
         ))}
       </select>
     ) : field.type === "textarea" ? (
@@ -116,20 +120,9 @@ const placeholder = examples[field.name] || `Masukkan ${caption.toLowerCase()}`;
         data-type={field.type === "tags" ? "tags" : undefined}
         placeholder={placeholder}
         required={field.required}
+        min={field.min}
+        max={field.max}
       />
     )}
   </label>
 )}
-
-<style>
-  .required-mark {
-    color: #b42318;
-  }
-  .field-note {
-    color: var(--muted-foreground);
-    font-size: 0.78rem;
-    font-weight: 500;
-    letter-spacing: normal;
-    text-transform: none;
-  }
-</style>

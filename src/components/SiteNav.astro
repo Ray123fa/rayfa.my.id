@@ -61,25 +61,3 @@ const current = (href: string) => path === href ? "page" : undefined;
     });
   });
 </script>
-<style>
-  .logo img {
-    display: block;
-    object-fit: contain;
-  }
-  .nav[data-open="true"] {
-    display: grid;
-    position: absolute;
-    z-index: 5;
-    top: 78px;
-    left: 0;
-    right: 0;
-    padding: 1rem 1.25rem;
-    background: var(--cream);
-    border-bottom: 3px solid var(--ink);
-  }
-  @media (min-width: 701px) {
-    .menu {
-      display: none !important;
-    }
-  }
-</style>
