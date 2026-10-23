@@ -1,7 +1,7 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import AdminCrud from "@/components/AdminCrud.astro";
-import { list } from "@/components/adminData";
+import { list } from "@/lib/adminData";
 const rows = await list("education", [{ sortOrder: "asc" }, { id: "asc" }]);
 ---
 
@@ -13,10 +13,17 @@ const rows = await list("education", [{ sortOrder: "asc" }, { id: "asc" }]);
     fields={[
       { name: "title", required: true },
       { name: "institution", required: true },
-      { name: "period", required: true },
+      {
+        name: "startYear",
+        type: "number",
+        required: true,
+        min: 1900,
+        max: 2200,
+      },
+      { name: "endYear", type: "number", min: 1900, max: 2200 },
       { name: "sortOrder", type: "number", required: true },
     ]}
-    columns={["title", "institution", "period", "sortOrder"]}
+    columns={["title", "institution", "startYear", "endYear", "sortOrder"]}
     rows={rows}
   />
 </AdminLayout>

@@ -2,7 +2,7 @@
 import { fieldLabel } from "@/lib/labels";
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import ImageDropzone from "@/components/ImageDropzone.astro";
-import { profileData } from "@/components/content";
+import { profileData } from "@/lib/content";
 const profile = await profileData();
 const value = (field: string) =>
   String(profile?.[field as keyof typeof profile] || "");
@@ -10,7 +10,7 @@ const value = (field: string) =>
 
 <AdminLayout title="Profil">
   <h1>Profil</h1>
-  <form class="panel form-grid" data-profile>
+  <form class="panel form-grid" data-profile method="POST">
     {[
       "name",
       "description",
@@ -45,78 +45,75 @@ const value = (field: string) =>
       </label>
     ))}
     <div data-profile-upload data-image-key={profile?.ogImageKey || ""}>
-      <ImageDropzone name="ogImage" label="Gambar pratinjau tautan" idPrefix="profile" />
+      <ImageDropzone
+        name="ogImage"
+        label="Gambar pratinjau tautan"
+        idPrefix="profile"
+      />
     </div>
     <button class="wide">Simpan profil ↗</button>
     <p class="wide" role="status"></p>
   </form>
   <script>
+    import { toast } from "@/lib/client/toast";
     import { setupFormValidation } from "@/lib/adminFormValidation";
     import { setupImageUpload } from "@/lib/imageUpload";
-    const csrf = () =>
-      document.cookie
-        .split("; ")
-        .find((v) => v.startsWith("__Host-portoku_csrf="))
-        ?.split("=")
-        .slice(1)
-        .join("=") || "";
+    import {
+      adminRequest,
+      uploadImage,
+      getErrorMessage,
+    } from "@/lib/client/adminApi";
     const form = document.querySelector<HTMLFormElement>("[data-profile]")!;
     const validation = setupFormValidation(form);
+    const status = form.querySelector<HTMLElement>("[role=status]")!;
+    const submit = form.querySelector<HTMLButtonElement>("button.wide")!;
+    let saving = false;
     const uploads = Array.from(
       form.querySelectorAll<HTMLElement>("[data-profile-upload]"),
     ).map((root) => setupImageUpload(root, root.dataset.imageKey || null));
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (saving) return;
       if (!validation.validate()) return;
-      const files = new FormData(form);
-      const data: Record<string, unknown> = {};
-      for (const [key, value] of files) {
-        if (value instanceof File) {
-          if (!value.size) continue;
-          const upload = new FormData();
-          upload.set("file", value);
-          const result = await fetch("/api/admin/upload", {
-            method: "POST",
-            headers: { "x-csrf-token": csrf() },
-            body: upload,
-          });
-          if (!result.ok) {
-            form.querySelector("[role=status]")!.textContent =
-              "Gagal mengunggah gambar.";
-            return;
-          }
-          data.ogImageKey = (
-            (await result.json()) as { key: string }
-          ).key;
-        } else data[key] = value;
+      saving = true;
+      submit.disabled = true;
+      status.textContent = "Menyimpan…";
+      try {
+        const files = new FormData(form);
+        const data: Record<string, unknown> = {};
+        for (const [key, value] of files) {
+          if (value instanceof File) {
+            if (!value.size) continue;
+            data.ogImageKey = await uploadImage(value);
+          } else data[key] = value;
+        }
+        ["ogImageKey"].forEach((key, index) => {
+          const upload = uploads[index];
+          if (upload.removed && !(key in data)) data[key] = null;
+          else if (upload.key) data[key] ??= upload.key;
+        });
+        const result = await adminRequest("/api/admin/profile", {
+          method: "POST",
+          body: JSON.stringify(data),
+        });
+        if (result.ok) {
+          location.href = "/admin/profile?status=berhasil&action=profile";
+        } else {
+          throw new Error(
+            await getErrorMessage(result, "Gagal menyimpan profil."),
+          );
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Gagal menyimpan profil. Silakan coba lagi.";
+        status.textContent = message;
+        toast.add({ type: "error", title: message });
+      } finally {
+        saving = false;
+        submit.disabled = false;
       }
-      ["ogImageKey"].forEach((key, index) => {
-        const upload = uploads[index];
-        if (upload.removed && !(key in data)) data[key] = null;
-        else if (upload.key) data[key] ??= upload.key;
-      });
-      const result = await fetch("/api/admin/profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-csrf-token": csrf() },
-        body: JSON.stringify(data),
-      });
-      form.querySelector("[role=status]")!.textContent = result.ok
-        ? "Tersimpan. Memuat ulang…"
-        : "Gagal menyimpan profil.";
-      if (result.ok) location.reload();
     });
   </script>
 </AdminLayout>
-
-<style>
-  .required-mark {
-    color: #b42318;
-  }
-  .field-note {
-    color: var(--muted-foreground);
-    font-size: 0.78rem;
-    font-weight: 500;
-    letter-spacing: normal;
-    text-transform: none;
-  }
-</style>

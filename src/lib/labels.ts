@@ -3,7 +3,7 @@ const fieldLabels: Record<string, string> = {
   sortOrder: "Urutan", techStack: "Teknologi", githubUrl: "Tautan GitHub",
   demoUrl: "Tautan demo", featured: "Unggulan", published: "Dipublikasikan",
   categoryId: "Kategori", categoryName: "Kategori", kind: "Jenis",
-  issuer: "Penerbit", institution: "Institusi", period: "Periode",
+  issuer: "Penerbit", institution: "Institusi", startYear: "Tahun mulai", endYear: "Tahun selesai",
   organization: "Organisasi", startDate: "Tanggal mulai", endDate: "Tanggal selesai",
   platform: "Platform", url: "Tautan", location: "Lokasi",
   education: "Pendidikan", currentRole: "Peran saat ini", hobbies: "Hobi",
@@ -24,7 +24,7 @@ export function auditAction(action: string) {
   const resources: Record<string, string> = {
     profile: "profil", projects: "proyek", categories: "kategori", skills: "keahlian",
     educations: "pendidikan", experiences: "pengalaman", certifications: "sertifikasi",
-    socials: "tautan sosial", messages: "pesan", access: "akses admin",
+    socials: "tautan sosial", messages: "pesan", access: "akses admin", audit: "riwayat aktivitas",
   };
   const [verb, resource] = action.split(":");
   if (resource) return actions[verb] && resources[resource]

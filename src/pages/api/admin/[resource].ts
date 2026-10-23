@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { z } from "zod";
 import { env } from "cloudflare:workers";
 import { getDb } from "@/lib/db";
 import { bodyJson, json, problem } from "@/lib/http";
@@ -19,6 +20,43 @@ const map: Record<string, string> = {
   audit: "auditLog",
 };
 
+export const DELETE: APIRoute = async ({ params, request, locals }) => {
+  if (!verifyCsrf(request)) return problem(403, "CSRF");
+  const resource = params.resource;
+  if (resource !== "messages" && resource !== "audit")
+    return problem(404, "Tidak ditemukan");
+
+  try {
+    const payload = await bodyJson(request);
+    if (
+      !payload ||
+      typeof payload !== "object" ||
+      !("ids" in payload) ||
+      !Array.isArray(payload.ids) ||
+      payload.ids.length === 0 ||
+      payload.ids.length > 100 ||
+      payload.ids.some(
+        (id) => typeof id !== "string" || id.length === 0 || id.length > 100,
+      )
+    )
+      return problem(400, "Permintaan tidak valid.");
+
+    const ids = [...new Set(payload.ids)];
+    const db: any = getDb(env.DB);
+    const result = await db[map[resource]].deleteMany({
+      where: { id: { in: ids } },
+    });
+    await Promise.all(
+      ids.map((id) =>
+        audit(db, request, `delete:${resource}`, locals.admin?.email, id),
+      ),
+    );
+    return json({ count: result.count });
+  } catch {
+    return problem(400, "Permintaan tidak valid.");
+  }
+};
+
 export const GET: APIRoute = async ({ params }) => {
   const resource = params.resource || "";
   const db: any = getDb(env.DB);
@@ -34,7 +72,9 @@ export const GET: APIRoute = async ({ params }) => {
   if (!delegate) return problem(404, "Tidak ditemukan");
 
   const orderBy =
-    resource === "messages" ? { createdAt: "desc" } : { sortOrder: "asc" };
+    resource === "messages" || resource === "access"
+      ? { createdAt: resource === "messages" ? "desc" : "asc" }
+      : { sortOrder: "asc" };
   return json(await delegate.findMany({ orderBy }));
 };
 
@@ -62,7 +102,7 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
   const resource = params.resource || "";
   try {
     if (resource === "profile")
-      return saveProfile(request, locals.admin?.email);
+      return await saveProfile(request, locals.admin?.email);
     const model = map[resource];
     const schema = (schemas as any)[resource];
     if (!model || !schema || resource === "audit")
@@ -83,7 +123,21 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
       result.id,
     );
     return json(result, 201);
-  } catch {
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return problem(
+        400,
+        error.issues[0]?.message || "Periksa kembali data yang dimasukkan.",
+      );
+    }
+    if (
+      resource === "access" &&
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "P2002"
+    )
+      return problem(409, "Email admin sudah terdaftar.");
     return problem(400, "Permintaan tidak valid.");
   }
 };

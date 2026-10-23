@@ -4,6 +4,7 @@ type Field = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
 export function setupFormValidation(form: HTMLFormElement) {
   form.noValidate = true;
+  // Cloudflare and browser types disagree on HTMLSelectElement.remove().
   const fields = Array.from(
     form.querySelectorAll("input, textarea, select"),
   ) as unknown as Field[];
@@ -49,6 +50,21 @@ export function setupFormValidation(form: HTMLFormElement) {
             message = "Pilih berkas.";
           else if (field.value.trim() === "")
             message = `${fieldLabel(field.name)} wajib diisi.`;
+        }
+        if (
+          !message &&
+          field.name === "startYear" &&
+          field.value.trim() !== ""
+        ) {
+          const year = Number(field.value);
+          if (!Number.isInteger(year) || year < 1900 || year > 2200)
+            message = "Masukkan tahun mulai antara 1900 dan 2200.";
+        }
+        if (!message && field.name === "endYear" && field.value.trim() !== "") {
+          const year = Number(field.value);
+          if (!Number.isInteger(year) || year < 1900 || year > 2200)
+            message =
+              "Masukkan tahun selesai antara 1900 dan 2200, atau kosongkan kolom.";
         }
         if (!message && !field.validity.valid) {
           if (

@@ -1,15 +1,40 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
-import { list } from "@/components/adminData";
+import { list } from "@/lib/adminData";
 const rows = await list("message");
+const bulkDeleteEnabled = rows.length > 0;
 ---
 
 <AdminLayout title="Pesan">
   <h1>Kotak masuk</h1>
-  <div class="table-wrap" style="margin-top:2rem">
+  {bulkDeleteEnabled && (
+    <div class="mt-6 flex flex-wrap items-center justify-between gap-4">
+      <button type="button" data-bulk-delete disabled>
+        Hapus terpilih (0)
+      </button>
+      <div>
+        <label>
+          <span class="sr-only">Filter pesan</span>
+          <select data-message-filter class="min-w-45">
+            <option value="">Semua pesan</option>
+            <option value="unread">Belum dibaca</option>
+            <option value="read">Sudah dibaca</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  )}
+  <div class="table-wrap mt-8">
     <table class="data-table">
       <thead>
         <tr>
+          <th>
+            <input
+              type="checkbox"
+              data-message-select-all
+              aria-label="Pilih semua pesan di halaman ini"
+            />
+          </th>
           <th>Pengirim</th>
           <th>Pesan</th>
           <th>Status</th>
@@ -17,9 +42,20 @@ const rows = await list("message");
           <th>Tindakan</th>
         </tr>
       </thead>
-      <tbody>
-        {rows.map((row: any) => (
-          <tr>
+      <tbody data-message-body>
+        {rows.map((row) => (
+          <tr
+            data-message-row
+            data-message-read={row.isRead ? "read" : "unread"}
+          >
+            <td>
+              <input
+                type="checkbox"
+                data-message-select
+                value={row.id}
+                aria-label={`Pilih pesan dari ${row.name}`}
+              />
+            </td>
             <td>
               {row.name}
               <br />
@@ -32,7 +68,7 @@ const rows = await list("message");
               <button data-read={row.id} data-value={String(!row.isRead)}>
                 Tandai {row.isRead ? "belum dibaca" : "sudah dibaca"}
               </button>{" "}
-              <button data-delete={row.id} style="background:var(--cream)">
+              <button data-delete={row.id} class="bg-cream!">
                 Hapus
               </button>
             </td>
@@ -40,53 +76,182 @@ const rows = await list("message");
         ))}
         {!rows.length && (
           <tr>
-            <td colspan={5}>
+            <td colspan={6}>
               Belum ada pesan. Pesan dari formulir kontak akan muncul di sini.
             </td>
           </tr>
         )}
+        <tr data-message-filter-empty hidden>
+          <td colspan={6}>Tidak ada pesan yang cocok dengan filter.</td>
+        </tr>
       </tbody>
     </table>
   </div>
+  <nav
+    class="pagination mt-6"
+    aria-label="Halaman pesan"
+    data-message-pagination
+    hidden
+  >
+    <button type="button" data-message-prev>
+      Sebelumnya
+    </button>
+    <span data-message-page-info></span>
+    <button type="button" data-message-next>
+      Berikutnya
+    </button>
+  </nav>
   <script>
     import { confirmAction } from "@/lib/adminDialog";
-    const token = () =>
-      document.cookie
-        .split("; ")
-        .find((v) => v.startsWith("__Host-portoku_csrf="))
-        ?.split("=")
-        .slice(1)
-        .join("=") || "";
-    const send = (url: string, init: RequestInit) =>
-      fetch(url, {
-        ...init,
-        headers: {
-          ...(init.headers || {}),
-          "Content-Type": "application/json",
-          "x-csrf-token": token(),
-        },
-      });
-    document.querySelectorAll<HTMLElement>("[data-read]").forEach((button) =>
-      button.addEventListener("click", async () => {
-        const response = await send(
-          `/api/admin/messages/${button.dataset.read}`,
+    import {
+      adminRequest,
+      deleteResource,
+      getErrorMessage,
+    } from "@/lib/client/adminApi";
+
+    document.querySelectorAll("[data-read]").forEach((button) => {
+      const btn = button as HTMLElement;
+      btn.addEventListener("click", async () => {
+        const response = await adminRequest(
+          `/api/admin/messages/${btn.dataset.read}`,
           {
             method: "PUT",
-            body: JSON.stringify({ isRead: button.dataset.value === "true" }),
+            body: JSON.stringify({ isRead: btn.dataset.value === "true" }),
           },
         );
-        if (response.ok) location.reload();
-      }),
-    );
-    document.querySelectorAll<HTMLElement>("[data-delete]").forEach((button) =>
-      button.addEventListener("click", async () => {
-        if (!(await confirmAction("Hapus pesan ini?"))) return;
-        const response = await send(
-          `/api/admin/messages/${button.dataset.delete}`,
-          { method: "DELETE" },
+        if (response.ok) {
+          location.assign(
+            `${location.pathname}?status=berhasil&action=status_msg`,
+          );
+        } else {
+          alert(await getErrorMessage(response, "Gagal mengubah status."));
+        }
+      });
+    });
+    document
+      .querySelectorAll("[data-delete]")
+      .forEach((button) => {
+        const btn = button as HTMLElement;
+        btn.addEventListener("click", () =>
+          deleteResource(
+            `/api/admin/messages/${btn.dataset.delete}`,
+            "Hapus pesan ini?",
+          ),
         );
-        if (response.ok) location.reload();
-      }),
-    );
+      });
+
+    const rows = Array.from(
+      document.querySelectorAll("[data-message-row]"),
+    ) as HTMLElement[];
+    const filter = document.querySelector("[data-message-filter]") as HTMLSelectElement | null;
+    const filterEmpty = document.querySelector("[data-message-filter-empty]") as HTMLElement | null;
+    const selectAll = document.querySelector("[data-message-select-all]") as HTMLInputElement | null;
+    const bulkDelete = document.querySelector("[data-bulk-delete]") as HTMLButtonElement | null;
+    const selected = new Set<string>();
+    const pagination = document.querySelector("[data-message-pagination]") as HTMLElement | null;
+    const pageInfo = document.querySelector("[data-message-page-info]") as HTMLElement | null;
+    const prevButton = document.querySelector("[data-message-prev]") as HTMLButtonElement | null;
+    const nextButton = document.querySelector("[data-message-next]") as HTMLButtonElement | null;
+    const perPage = 15;
+    let filteredRows = rows;
+    let page = 1;
+    const totalPages = () =>
+      Math.max(1, Math.ceil(filteredRows.length / perPage));
+
+    const updateSelection = () => {
+      const visibleRows = rows.filter((row) => !row.hidden);
+      const visibleSelected = visibleRows.filter((row) => {
+        const input = row.querySelector("[data-message-select]") as HTMLInputElement | null;
+        return selected.has(input?.value || "");
+      }).length;
+      if (selectAll) {
+        selectAll.checked =
+          visibleRows.length > 0 && visibleSelected === visibleRows.length;
+        selectAll.indeterminate =
+          visibleSelected > 0 && visibleSelected < visibleRows.length;
+      }
+      if (bulkDelete) {
+        bulkDelete.disabled = selected.size === 0;
+        bulkDelete.textContent = `Hapus terpilih (${selected.size})`;
+      }
+    };
+
+    const renderPage = () => {
+      const pages = totalPages();
+      page = Math.min(page, pages);
+      rows.forEach((row) => (row.hidden = true));
+      filteredRows
+        .slice((page - 1) * perPage, page * perPage)
+        .forEach((row) => (row.hidden = false));
+      if (filterEmpty) filterEmpty.hidden = filteredRows.length > 0;
+      if (pagination) pagination.hidden = filteredRows.length <= perPage;
+      if (pageInfo) pageInfo.textContent = `Halaman ${page} dari ${pages}`;
+      if (prevButton) prevButton.disabled = page === 1;
+      if (nextButton) nextButton.disabled = page === pages;
+      updateSelection();
+    };
+
+    const applyFilter = () => {
+      const filterValue = filter?.value ?? "";
+      filteredRows = rows.filter(
+        (row) => filterValue === "" || row.dataset.messageRead === filterValue,
+      );
+      selected.clear();
+      document
+        .querySelectorAll<HTMLInputElement>("[data-message-select]")
+        .forEach((input) => (input.checked = false));
+      page = 1;
+      renderPage();
+    };
+
+    filter?.addEventListener("change", applyFilter);
+
+    document
+      .querySelectorAll("[data-message-select]")
+      .forEach((input) => {
+        const checkbox = input as HTMLInputElement;
+        checkbox.addEventListener("change", () => {
+          if (checkbox.checked) selected.add(checkbox.value);
+          else selected.delete(checkbox.value);
+          updateSelection();
+        });
+      });
+    selectAll?.addEventListener("change", () => {
+      rows
+        .filter((row) => !row.hidden)
+        .forEach((row) => {
+          const input = row.querySelector<HTMLInputElement>(
+            "[data-message-select]",
+          );
+          if (!input) return;
+          input.checked = selectAll.checked;
+          if (input.checked) selected.add(input.value);
+          else selected.delete(input.value);
+        });
+      updateSelection();
+    });
+    bulkDelete?.addEventListener("click", async () => {
+      if (!(await confirmAction(`Hapus ${selected.size} pesan terpilih?`)))
+        return;
+      const response = await adminRequest("/api/admin/messages", {
+        method: "DELETE",
+        body: JSON.stringify({ ids: [...selected] }),
+      });
+      if (response.ok)
+        location.assign(`${location.pathname}?status=berhasil&action=hapus`);
+      else alert(await getErrorMessage(response, "Gagal menghapus pesan."));
+    });
+
+    if (pagination && pageInfo && prevButton && nextButton) {
+      prevButton.addEventListener("click", () => {
+        page--;
+        renderPage();
+      });
+      nextButton.addEventListener("click", () => {
+        page++;
+        renderPage();
+      });
+    }
+    renderPage();
   </script>
 </AdminLayout>

@@ -19,7 +19,7 @@ function showDialog(options: AdminDialogOptions): Promise<boolean> {
       await Promise.all([
         import("react-dom/client"),
         import("react"),
-        import("@/components/AdminAlertDialog"),
+        import("@/components/ui/AdminAlertDialog"),
       ]);
     const host = document.createElement("div");
     document.body.appendChild(host);

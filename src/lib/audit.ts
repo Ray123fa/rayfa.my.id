@@ -1,4 +1,5 @@
 import type { Db } from "./db";
+
 export async function audit(
   db: Db,
   request: Request,

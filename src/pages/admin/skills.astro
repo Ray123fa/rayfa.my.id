@@ -1,16 +1,18 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import AdminCrud from "@/components/AdminCrud.astro";
-import { list } from "@/components/adminData";
+import { list } from "@/lib/adminData";
 const categories = await list("skillCategory", { sortOrder: "asc" });
-const skills = (await list("skill", { sortOrder: "asc" })).map(
-  (skill: any) => ({
-    ...skill,
-    categoryName:
-      categories.find((category: any) => category.id === skill.categoryId)
-        ?.name || "—",
-  }),
-);
+const skills = (await list("skill", { sortOrder: "asc" }))
+  .map((skill) => {
+    const category = categories.find((c) => c.id === skill.categoryId);
+    return {
+      ...skill,
+      categoryName: category?.name || "—",
+      categorySortOrder: category?.sortOrder ?? 999,
+    };
+  })
+  .sort((a, b) => a.categorySortOrder - b.categorySortOrder || a.sortOrder - b.sortOrder);
 ---
 
 <AdminLayout title="Keahlian">
@@ -24,7 +26,7 @@ const skills = (await list("skill", { sortOrder: "asc" })).map(
     columns={["name", "sortOrder"]}
     rows={categories}
   />
-  <div style="height:4rem"></div>
+  <div class="h-16"></div>
   <AdminCrud
     resource="skills"
     title="Keahlian"
@@ -33,7 +35,7 @@ const skills = (await list("skill", { sortOrder: "asc" })).map(
       {
         name: "categoryId",
         type: "select",
-        options: categories.map((category: any) => ({
+        options: categories.map((category) => ({
           value: category.id,
           label: category.name,
         })),
@@ -43,5 +45,13 @@ const skills = (await list("skill", { sortOrder: "asc" })).map(
     ]}
     columns={["name", "categoryName", "sortOrder"]}
     rows={skills}
+    filter={{
+      name: "categoryId",
+      label: "Semua kategori",
+      options: categories.map((category) => ({
+        value: category.id,
+        label: category.name,
+      })),
+    }}
   />
 </AdminLayout>

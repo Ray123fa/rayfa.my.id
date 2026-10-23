@@ -1,17 +1,42 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { auditAction } from "@/lib/labels";
-import { list } from "@/components/adminData";
+import { list } from "@/lib/adminData";
 const rows = await list("auditLog");
 ---
 
 <AdminLayout title="Audit">
   <h1>Riwayat aktivitas</h1>
-  <p>Catatan aktivitas admin terbaru yang hanya dapat dibaca.</p>
-  <div class="table-wrap">
+  <p>Catatan aktivitas admin terbaru.</p>
+  <div class="mt-6 flex flex-wrap items-end justify-between gap-4">
+    <button type="button" data-bulk-delete disabled>
+      Hapus terpilih (0)
+    </button>
+    <div class="flex flex-wrap items-end gap-4">
+      <label>
+        Dari tanggal
+        <input type="date" data-audit-start />
+      </label>
+      <label>
+        Sampai tanggal
+        <input type="date" data-audit-end />
+      </label>
+      <button type="button" data-audit-reset>
+        Reset filter
+      </button>
+    </div>
+  </div>
+  <div class="table-wrap mt-8">
     <table class="data-table">
       <thead>
         <tr>
+          <th>
+            <input
+              type="checkbox"
+              data-audit-select-all
+              aria-label="Pilih semua aktivitas di halaman ini"
+            />
+          </th>
           <th>Waktu</th>
           <th>Pelaku</th>
           <th>Tindakan</th>
@@ -19,15 +44,213 @@ const rows = await list("auditLog");
         </tr>
       </thead>
       <tbody>
-        {rows.map((row: any) => (
-          <tr>
+        {rows.map((row) => (
+          <tr
+            data-audit-row
+            data-audit-created={new Date(row.createdAt).toISOString()}
+          >
+            <td>
+              <input
+                type="checkbox"
+                data-audit-select
+                value={row.id}
+                aria-label={`Pilih aktivitas ${auditAction(row.action)} oleh ${row.actorEmail || "Sistem"}`}
+              />
+            </td>
             <td>{new Date(row.createdAt).toLocaleString("id-ID")}</td>
             <td>{row.actorEmail || "Sistem"}</td>
             <td>{auditAction(row.action)}</td>
             <td>{row.target || "—"}</td>
           </tr>
         ))}
+        {!rows.length && (
+          <tr>
+            <td colspan={5}>Belum ada riwayat aktivitas.</td>
+          </tr>
+        )}
+        <tr data-audit-filter-empty hidden>
+          <td colspan={5}>Tidak ada aktivitas yang cocok dengan filter.</td>
+        </tr>
       </tbody>
     </table>
   </div>
+  <nav
+    class="pagination mt-6"
+    aria-label="Halaman aktivitas"
+    data-audit-pagination
+    hidden
+  >
+    <button type="button" data-audit-prev>
+      Sebelumnya
+    </button>
+    <span data-audit-page-info></span>
+    <button type="button" data-audit-next>
+      Berikutnya
+    </button>
+  </nav>
+  <script>
+    import { confirmAction } from "@/lib/adminDialog";
+    import { adminRequest, getErrorMessage } from "@/lib/client/adminApi";
+
+    const rows = Array.from(
+      document.querySelectorAll("[data-audit-row]"),
+    ) as HTMLElement[];
+    const start =
+      document.querySelector<HTMLInputElement>("[data-audit-start]");
+    const end = document.querySelector<HTMLInputElement>("[data-audit-end]");
+    const filterEmpty = document.querySelector(
+      "[data-audit-filter-empty]",
+    ) as HTMLElement | null;
+    const selectAll = document.querySelector(
+      "[data-audit-select-all]",
+    ) as HTMLInputElement | null;
+    const bulkDelete = document.querySelector(
+      "[data-bulk-delete]",
+    ) as HTMLButtonElement | null;
+    const selected = new Set<string>();
+    const pagination = document.querySelector(
+      "[data-audit-pagination]",
+    ) as HTMLElement | null;
+    const pageInfo = document.querySelector(
+      "[data-audit-page-info]",
+    ) as HTMLElement | null;
+    const prevButton = document.querySelector(
+      "[data-audit-prev]",
+    ) as HTMLButtonElement | null;
+    const nextButton = document.querySelector(
+      "[data-audit-next]",
+    ) as HTMLButtonElement | null;
+    const perPage = 15;
+    let filteredRows = rows;
+    let page = 1;
+    const totalPages = () =>
+      Math.max(1, Math.ceil(filteredRows.length / perPage));
+
+    const updateSelection = () => {
+      const visibleRows = rows.filter((row) => !row.hidden);
+      const visibleSelected = visibleRows.filter((row) => {
+        const input = row.querySelector(
+          "[data-audit-select]",
+        ) as HTMLInputElement | null;
+        return selected.has(input?.value || "");
+      }).length;
+      if (selectAll) {
+        selectAll.checked =
+          visibleRows.length > 0 && visibleSelected === visibleRows.length;
+        selectAll.indeterminate =
+          visibleSelected > 0 && visibleSelected < visibleRows.length;
+      }
+      if (bulkDelete) {
+        bulkDelete.disabled = selected.size === 0;
+        bulkDelete.textContent = `Hapus terpilih (${selected.size})`;
+      }
+    };
+
+    const renderPage = () => {
+      const pages = totalPages();
+      page = Math.min(page, pages);
+      rows.forEach((row) => (row.hidden = true));
+      filteredRows
+        .slice((page - 1) * perPage, page * perPage)
+        .forEach((row) => (row.hidden = false));
+      if (filterEmpty)
+        filterEmpty.hidden = rows.length === 0 || filteredRows.length > 0;
+      if (pagination) pagination.hidden = filteredRows.length <= perPage;
+      if (pageInfo) pageInfo.textContent = `Halaman ${page} dari ${pages}`;
+      if (prevButton) prevButton.disabled = page === 1;
+      if (nextButton) nextButton.disabled = page === pages;
+      updateSelection();
+    };
+
+    const applyFilter = () => {
+      if (start && end) {
+        start.max = end.value;
+        end.min = start.value;
+      }
+      const from = start?.value
+        ? new Date(`${start.value}T00:00:00`).getTime()
+        : -Infinity;
+      const until = end?.value ? new Date(`${end.value}T00:00:00`) : null;
+      until?.setDate(until.getDate() + 1);
+      filteredRows = rows.filter((row) => {
+        const time = new Date(row.dataset.auditCreated!).getTime();
+        return time >= from && time < (until?.getTime() ?? Infinity);
+      });
+      selected.clear();
+      document
+        .querySelectorAll<HTMLInputElement>("[data-audit-select]")
+        .forEach((input) => (input.checked = false));
+      page = 1;
+      renderPage();
+    };
+
+    start?.addEventListener("change", applyFilter);
+    end?.addEventListener("change", applyFilter);
+    document
+      .querySelector("[data-audit-reset]")
+      ?.addEventListener("click", () => {
+        if (start) start.value = "";
+        if (end) end.value = "";
+        applyFilter();
+      });
+
+    document.querySelectorAll("[data-audit-select]").forEach((input) => {
+      const checkbox = input as HTMLInputElement;
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) selected.add(checkbox.value);
+        else selected.delete(checkbox.value);
+        updateSelection();
+      });
+    });
+    selectAll?.addEventListener("change", () => {
+      rows
+        .filter((row) => !row.hidden)
+        .forEach((row) => {
+          const input = row.querySelector<HTMLInputElement>(
+            "[data-audit-select]",
+          );
+          if (!input) return;
+          input.checked = selectAll.checked;
+          if (input.checked) selected.add(input.value);
+          else selected.delete(input.value);
+        });
+      updateSelection();
+    });
+    bulkDelete?.addEventListener("click", async () => {
+      if (selected.size === 0 || bulkDelete?.disabled) return;
+      if (selected.size > 100) {
+        alert("Pilih maksimal 100 aktivitas untuk sekali hapus.");
+        return;
+      }
+      if (!(await confirmAction(`Hapus ${selected.size} aktivitas terpilih?`)))
+        return;
+      bulkDelete.disabled = true;
+      try {
+        const response = await adminRequest("/api/admin/audit", {
+          method: "DELETE",
+          body: JSON.stringify({ ids: [...selected] }),
+        });
+        if (response.ok)
+          location.assign(`${location.pathname}?status=berhasil&action=hapus`);
+        else
+          alert(await getErrorMessage(response, "Gagal menghapus aktivitas."));
+      } catch {
+        alert("Gagal menghapus aktivitas. Silakan coba lagi.");
+      } finally {
+        updateSelection();
+      }
+    });
+
+    if (pagination && pageInfo && prevButton && nextButton) {
+      prevButton.addEventListener("click", () => {
+        page--;
+        renderPage();
+      });
+      nextButton.addEventListener("click", () => {
+        page++;
+        renderPage();
+      });
+    }
+    renderPage();
+  </script>
 </AdminLayout>

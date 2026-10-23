@@ -1,6 +1,6 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
-import { db } from "@/components/content";
+import { db } from "@/lib/content";
 let stats = { projects: 0, messages: 0, skills: 0, admins: 0 };
 try {
   const d = db();
@@ -16,14 +16,14 @@ try {
 
 <AdminLayout title="Ringkasan">
   <p class="eyebrow">Sekilas ringkasan</p>
-  <h1 style="font-size:clamp(3rem,7vw,7rem);margin-bottom:2rem">
+  <h1 class="text-[clamp(3rem,7vw,7rem)] mb-8">
     Selamat datang.
   </h1>
   <div class="admin-cards">
     {Object.entries(stats).map(([label, value]) => (
       <article class="admin-card">
         <span>{({ projects: "Proyek", messages: "Pesan belum dibaca", skills: "Keahlian", admins: "Admin" }[label as keyof typeof stats]).toUpperCase()}</span>
-        <h2 style="font-size:4rem">{value}</h2>
+        <h2 class="text-6xl">{value}</h2>
       </article>
     ))}
   </div>

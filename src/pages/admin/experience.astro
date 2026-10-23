@@ -1,7 +1,7 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import AdminCrud from "@/components/AdminCrud.astro";
-import { list } from "@/components/adminData";
+import { list } from "@/lib/adminData";
 const rows = await list("experience", { sortOrder: "asc" });
 ---
 
