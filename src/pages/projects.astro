@@ -1,6 +1,6 @@
 ---
 import PublicLayout from "@/layouts/PublicLayout.astro";
-import { db, strings, media, safeUrl } from "@/components/content";
+import { db, strings, media, safeUrl } from "@/lib/content";
 
 const filter = Astro.url.searchParams.get("tech")?.slice(0, 40);
 const requestedPage = Number(Astro.url.searchParams.get("page") || "1");
@@ -50,7 +50,7 @@ const href = (target: number) => {
     </p>
   </section>
 
-  <nav class="tags" style="margin:2rem 0" aria-label="Filter proyek">
+  <nav class="tags my-8" aria-label="Filter proyek">
     <a class="tag" href="/projects" aria-current={!filter ? "page" : undefined}>
       Semua
     </a>
@@ -65,7 +65,7 @@ const href = (target: number) => {
     ))}
   </nav>
 
-  <section class="section" style="border-top:0;padding-top:0">
+  <section class="section border-t-0 pt-0">
     <div class="grid">
       {visible.map((project: any) => (
         <article class="card">
@@ -74,14 +74,14 @@ const href = (target: number) => {
               <img
                 src={media(project.thumbnailKey)}
                 alt={`${project.title} pratinjau proyek`}
-                style="width:100%;height:100%;object-fit:cover"
+                class="w-full h-full object-cover"
                 loading="lazy"
               />
             ) : (
               project.year
             )}
           </div>
-          <span class="tag" style="align-self:flex-start">
+          <span class="tag self-start">
             {project.year}
           </span>
           <h2>{project.title}</h2>
@@ -91,7 +91,7 @@ const href = (target: number) => {
               <span class="tag">{tag}</span>
             ))}
           </div>
-          <div style="display:flex;gap:1rem;margin-top:auto">
+          <div class="flex gap-4 mt-auto">
             {safeUrl(project.githubUrl) && (
               <a href={safeUrl(project.githubUrl)} rel="noopener noreferrer">
                 GitHub ↗
@@ -148,10 +148,3 @@ const href = (target: number) => {
     )}
   </section>
 </PublicLayout>
-
-<style>
-  .card h2 {
-    margin: 0;
-    font-size: 1.35rem;
-  }
-</style>

@@ -1,6 +1,6 @@
 ---
 import PublicLayout from "@/layouts/PublicLayout.astro";
-import { profileData, db, strings, media, safeUrl } from "@/components/content";
+import { profileData, db, strings, media, safeUrl } from "@/lib/content";
 import type { SocialLink } from "@prisma/client";
 
 const profile = await profileData();
@@ -34,11 +34,11 @@ const ogImage = profile?.ogImageKey ? media(profile.ogImageKey) : undefined;
   <section class="hero" id="beranda">
     <div>
       <h1>{name}</h1>
-      <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:2rem">
+      <div class="flex flex-wrap gap-4 mt-8">
         <a class="button" href="/#proyek">
           Lihat proyek ↘
         </a>
-        <a class="button" style="background:var(--cream)" href="/#kontak">
+        <a class="button bg-cream" href="/#kontak">
           Mulai percakapan
         </a>
       </div>
@@ -92,7 +92,7 @@ const ogImage = profile?.ogImageKey ? media(profile.ogImageKey) : undefined;
                   <img
                     src={media(project.thumbnailKey)}
                     alt={`${project.title} pratinjau proyek`}
-                    style="width:100%;height:100%;object-fit:cover"
+                    class="w-full h-full object-cover"
                     loading="lazy"
                   />
                 ) : (
@@ -152,50 +152,3 @@ const ogImage = profile?.ogImageKey ? media(profile.ogImageKey) : undefined;
     </div>
   </section>
 </PublicLayout>
-
-<style>
-  section[id] {
-    scroll-margin-top: 7rem;
-  }
-  .profile-summary {
-    display: grid;
-    gap: 1rem;
-    margin: 0 0 1.5rem;
-    overflow-wrap: anywhere;
-  }
-  .profile-summary dt {
-    font-weight: 700;
-  }
-  .profile-summary dd {
-    margin: 0.25rem 0 0;
-  }
-  .contact-button,
-  .social-links {
-    margin-top: 1.5rem;
-  }
-  .social-links a {
-    overflow-wrap: anywhere;
-    max-width: 100%;
-  }
-  .hero {
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-    align-items: center;
-  }
-  .hero h1 {
-    overflow-wrap: anywhere;
-  }
-  .hero-illustration {
-    display: block;
-    width: 100%;
-    height: auto;
-  }
-  @media (max-width: 800px) {
-    .hero {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    .hero-illustration {
-      max-width: 420px;
-      justify-self: center;
-    }
-  }
-</style>

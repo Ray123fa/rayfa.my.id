@@ -1,0 +1,174 @@
+/* Page-specific styles extracted from .astro files */
+
+/* about.astro styles */
+.quick-bio {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  min-width: 0;
+}
+.bio-row {
+  position: relative;
+  padding-left: 2rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.bio-row dt,
+.bio-row dd {
+  display: inline;
+  margin: 0;
+}
+.bio-row dt {
+  white-space: nowrap;
+}
+.bio-row dt span {
+  position: absolute;
+  left: 0;
+  top: 0.2rem;
+  display: flex;
+  justify-content: center;
+  width: 1.5rem;
+  text-align: center;
+}
+.education-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 2rem 0 0;
+  position: relative;
+  display: grid;
+  gap: 2rem;
+}
+.education-timeline::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 9px;
+  width: 3px;
+  background: var(--ink);
+}
+.education-entry {
+  position: relative;
+  padding-left: 2.5rem;
+  min-width: 0;
+}
+.education-entry::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2rem;
+  width: 21px;
+  height: 21px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--orange);
+  z-index: 1;
+}
+.education-entry:nth-child(even)::before {
+  background: var(--secondary);
+}
+.education-card {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+.education-card > div {
+  min-width: 0;
+}
+.education-card h3,
+.education-card p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.education-card h3 {
+  font-size: 1.25rem;
+}
+.education-card .education-institution {
+  margin-top: 0.5rem;
+}
+.education-card .education-period {
+  margin-top: 0.25rem;
+  color: var(--muted-foreground);
+  font-size: 0.9rem;
+}
+.education-card img,
+.education-icon {
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+@media (min-width: 768px) {
+  .education-timeline::before {
+    left: calc(50% - 1.5px);
+  }
+  .education-entry {
+    width: 50%;
+    margin-left: 50%;
+    padding-left: 2rem;
+  }
+  .education-entry::before {
+    left: -10.5px;
+  }
+  .education-entry:nth-child(even) {
+    margin-left: 0;
+    padding-left: 0;
+    padding-right: 2rem;
+  }
+  .education-entry:nth-child(even)::before {
+    left: auto;
+    right: -10.5px;
+  }
+}
+
+/* index.astro styles */
+section[id] {
+  scroll-margin-top: 7rem;
+}
+.profile-summary {
+  display: grid;
+  gap: 1rem;
+  margin: 0 0 1.5rem;
+  overflow-wrap: anywhere;
+}
+.profile-summary dt {
+  font-weight: 700;
+}
+.profile-summary dd {
+  margin: 0.25rem 0 0;
+}
+.contact-button,
+.social-links {
+  margin-top: 1.5rem;
+}
+.social-links a {
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.hero {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  align-items: center;
+}
+.hero h1 {
+  overflow-wrap: anywhere;
+}
+.hero-illustration {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+@media (max-width: 800px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hero-illustration {
+    max-width: 420px;
+    justify-self: center;
+  }
+}
+
+/* projects.astro styles */
+.card h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
