@@ -7,12 +7,16 @@ export const contactSchema = z.object({
   website: z.string().max(200).optional(),
 });
 
-export function isContactForm(request: Request) {
-  const type = request.headers
+function contentType(request: Request) {
+  return request.headers
     .get("content-type")
     ?.split(";")[0]
     .trim()
     .toLowerCase();
+}
+
+export function isContactForm(request: Request) {
+  const type = contentType(request);
   return (
     type === "application/x-www-form-urlencoded" ||
     type === "multipart/form-data"
@@ -20,12 +24,8 @@ export function isContactForm(request: Request) {
 }
 
 export async function readContact(request: Request) {
-  const type = request.headers
-    .get("content-type")
-    ?.split(";")[0]
-    .trim()
-    .toLowerCase();
-  if (type !== "application/json" && !isContactForm(request))
+  const form = isContactForm(request);
+  if (contentType(request) !== "application/json" && !form)
     throw new Error("UNSUPPORTED_CONTENT_TYPE");
 
   // Enforce the limit on actual bytes, even without a Content-Length header.
@@ -58,7 +58,7 @@ export async function readContact(request: Request) {
   }
   const bounded = new Response(bytes, { headers: request.headers });
   let raw: unknown;
-  if (isContactForm(request)) {
+  if (form) {
     const entries = [...(await bounded.formData()).entries()];
     if (new Set(entries.map(([key]) => key)).size !== entries.length)
       throw new Error("DUPLICATE_FIELD");

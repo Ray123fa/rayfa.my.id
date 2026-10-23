@@ -3,6 +3,7 @@ import { env } from "cloudflare:workers";
 import { getDb } from "@/lib/db";
 import { validateSession } from "@/lib/session";
 import { csrfCookie, csrfToken } from "@/lib/csrf";
+import { randomToken } from "@/lib/crypto";
 
 const securityHeaders: Record<string, string> = {
   "x-content-type-options": "nosniff",
@@ -67,7 +68,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       if (token) {
         context.locals.csrf = token;
       } else {
-        const value = csrfCookie();
+        const value = csrfCookie(randomToken(24));
         context.locals.csrf = value.split("=")[1].split(";")[0];
         headers.append("set-cookie", value);
       }

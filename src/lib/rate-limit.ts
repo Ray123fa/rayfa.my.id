@@ -8,14 +8,15 @@ export async function rateLimit(
   const now = new Date();
   const current = await db.rateLimit.findUnique({ where: { key } });
   if (!current || current.resetAt <= now) {
+    const resetAt = new Date(now.getTime() + seconds * 1000);
     await db.rateLimit.upsert({
       where: { key },
       create: {
         key,
         count: 1,
-        resetAt: new Date(now.getTime() + seconds * 1000),
+        resetAt,
       },
-      update: { count: 1, resetAt: new Date(now.getTime() + seconds * 1000) },
+      update: { count: 1, resetAt },
     });
     return true;
   }
