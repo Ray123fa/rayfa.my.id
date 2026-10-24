@@ -11,12 +11,14 @@ Bangun personal website portfolio bertema **neobrutalism (orange-duotone)** deng
 **Referensi struktur & fitur:** https://ilh4m.com. Ambil strukturnya saja (navbar sederhana, hero dengan teks berganti, about + skills, daftar project dengan thumbnail/tech stack/link, contact + social links, badge availability). **Jangan menjiplak desain atau kontennya.** Tampilan harus neobrutalism.
 
 ### 1.1 Tujuan
+
 - Etalase portfolio yang cepat, rapi, responsif, dan SEO-friendly
 - Seluruh konten (profil, project, skills, dll.) dapat diubah tanpa deploy ulang
 - Admin aman: hanya email yang diizinkan yang bisa masuk, dan daftar email bisa dikelola dari UI
 - Menerapkan OWASP Top 10:2025 sebagai syarat selesai, bukan tahap opsional
 
 ### 1.2 Non-Goals
+
 - Tidak ada blog (boleh ditambahkan nanti sebagai tabel `Post`)
 - Tidak ada login username/password, registrasi, atau reset password
 - Tidak ada multi-bahasa (i18n) pada versi awal
@@ -26,24 +28,25 @@ Bangun personal website portfolio bertema **neobrutalism (orange-duotone)** deng
 
 ## 2. Tech Stack
 
-| Area | Pilihan |
-|---|---|
-| Framework | Astro (SSR, `output: "server"`) + `@astrojs/react` + `@astrojs/cloudflare` |
-| Bahasa | TypeScript strict |
-| Styling | Tailwind CSS v4 (via `@tailwindcss/vite`) |
-| UI | shadcn/ui, style neobrutalism orange-duotone |
-| Database | Cloudflare D1 |
-| ORM | **Prisma** dengan driver adapter D1 (`@prisma/adapter-d1`) |
-| Storage | Cloudflare R2 |
-| Auth | Google OAuth 2.0 (PKCE) memakai `arctic`, session custom di D1 |
-| Validasi | Zod |
-| Package manager | pnpm |
+| Area            | Pilihan                                                                    |
+| --------------- | -------------------------------------------------------------------------- |
+| Framework       | Astro (SSR, `output: "server"`) + `@astrojs/react` + `@astrojs/cloudflare` |
+| Bahasa          | TypeScript strict                                                          |
+| Styling         | Tailwind CSS v4 (via `@tailwindcss/vite`)                                  |
+| UI              | shadcn/ui, style neobrutalism orange-duotone                               |
+| Database        | Cloudflare D1                                                              |
+| ORM             | **Prisma** dengan driver adapter D1 (`@prisma/adapter-d1`)                 |
+| Storage         | Cloudflare R2                                                              |
+| Auth            | Google OAuth 2.0 (PKCE) memakai `arctic`, session custom di D1             |
+| Validasi        | Zod                                                                        |
+| Package manager | pnpm                                                                       |
 
 ---
 
 ## 3. Design System (WAJIB diikuti)
 
 ### 3.1 Setup tema
+
 Inisialisasi shadcn, lalu install tema:
 
 ```bash
@@ -69,6 +72,7 @@ Tambahkan di `globals.css` agar radius, shadow, dan font weight sesuai:
 ```
 
 ### 3.2 Aturan visual
+
 - Border tebal hitam, hard shadow (tanpa blur), sudut sedikit membulat (5px)
 - Warna dominan oranye + hitam + putih/krem, tanpa gradient halus
 - Efek hover/active khas neobrutalism: elemen bergeser ke arah shadow (`translate-x-boxShadowX translate-y-boxShadowY shadow-none`)
@@ -82,9 +86,10 @@ Tambahkan di `globals.css` agar radius, shadow, dan font weight sesuai:
 
 ## 4. Requirement Fungsional: Halaman Publik
 
-Semua konten diambil dari D1 (bukan hardcode). Semua halaman: SEO meta (title, description, OG, canonical), `sitemap.xml`, `robots.txt`, favicon, halaman 404 dan 500 kustom bertema neobrutalism.
+Semua konten diambil dari D1 (bukan hardcode). Semua halaman: SEO meta (title, description, OG, canonical), `sitemap-index.xml`, `robots.txt`, favicon, halaman 404 dan 500 kustom bertema neobrutalism.
 
 ### 4.1 Home (`/`)
+
 - Hero: nama, headline dengan teks yang berganti otomatis (typewriter/rotating), deskripsi singkat, CTA ("Lihat Projects", "Hubungi Saya")
 - Badge status availability (Available for Work / Not Available), diubah dari admin
 - Preview about singkat
@@ -92,18 +97,21 @@ Semua konten diambil dari D1 (bukan hardcode). Semua halaman: SEO meta (title, d
 - CTA ke halaman contact
 
 ### 4.2 About (`/about`)
+
 - Deskripsi diri dan quick bio (lokasi, pendidikan, role, hobi)
 - Skills dikelompokkan per kategori (Web, Backend, Languages, DevOps, Database, dll.) ditampilkan sebagai badge
 - Timeline pengalaman
 - Sertifikasi dan penghargaan (kompetisi dan sertifikasi)
 
 ### 4.3 Projects (`/projects`)
+
 - Grid card: thumbnail (dari R2), judul, deskripsi, tahun, tech stack (badge), link GitHub dan Live Demo
 - Filter berdasarkan tech/tag, plus pagination atau "load more"
 - Halaman detail opsional `/projects/[slug]`
 - Hanya project `published = true` yang tampil
 
 ### 4.4 Contact (`/contact`)
+
 - Form: nama, email, pesan; disimpan ke tabel `Message`
 - Proteksi spam: honeypot field + rate limit per IP (tabel `RateLimit`)
 - Daftar social links (dikelola dari admin)
@@ -116,6 +124,7 @@ Semua konten diambil dari D1 (bukan hardcode). Semua halaman: SEO meta (title, d
 Login admin **hanya** lewat Google. Tidak ada login password dan tidak ada registrasi.
 
 ### 5.1 Alur
+
 1. `/admin/login` menampilkan satu tombol "Login dengan Google"
 2. `GET /api/auth/google`: buat `state` dan `codeVerifier`, simpan di cookie sementara (`HttpOnly`, `Secure`, `SameSite=Lax`, TTL pendek, sekali pakai), lalu redirect ke Google dengan scope `openid email profile`
 3. `GET /api/auth/google/callback`:
@@ -129,6 +138,7 @@ Login admin **hanya** lewat Google. Tidak ada login password dan tidak ada regis
 5. Middleware Astro memproteksi semua `/admin/*` (kecuali `/admin/login`) dan semua `/api/admin/*`. Di setiap request: validasi session di DB dan **cek ulang bahwa email session masih ada di allowlist** (jika email dihapus dari allowlist, session otomatis tidak valid)
 
 ### 5.2 Manajemen email yang diizinkan
+
 - Halaman `/admin/access` (CRUD): daftar email, tambah, hapus
 - Validasi format dengan Zod, normalisasi lowercase, cegah duplikat
 - Email default dari env `DEFAULT_ADMIN_EMAIL`: otomatis di-seed ke `AdminEmail` bila tabel masih kosong (lewat seed script dan juga pengecekan saat login pertama)
@@ -139,18 +149,19 @@ Login admin **hanya** lewat Google. Tidak ada login password dan tidak ada regis
 
 ## 6. Requirement Fungsional: Halaman Admin (`/admin/*`)
 
-| Modul | Fitur |
-|---|---|
-| **Projects** | CRUD: judul, slug, deskripsi, tahun, tech stack (tags), link GitHub/demo, thumbnail (upload ke R2), urutan, featured, published |
-| **Profil/About** | nama, headline, teks rotating hero, deskripsi, bio (lokasi, pendidikan, role, hobi), foto, status availability |
-| **Skills** | CRUD kategori dan item, atur urutan |
-| **Experience & Certifications** | CRUD pengalaman, sertifikasi, dan penghargaan |
-| **Social Links** | CRUD platform + URL, atur urutan |
-| **Messages** | Daftar pesan contact, tandai sudah dibaca, hapus |
-| **Access** | Kelola email admin (lihat 5.2) |
-| **Audit** | `/admin/audit`: log read-only aktivitas terbaru |
+| Modul                           | Fitur                                                                                                                           |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Projects**                    | CRUD: judul, slug, deskripsi, tahun, tech stack (tags), link GitHub/demo, thumbnail (upload ke R2), urutan, featured, published |
+| **Profil/About**                | nama, headline, teks rotating hero, deskripsi, bio (lokasi, pendidikan, role, hobi), foto, status availability                  |
+| **Skills**                      | CRUD kategori dan item, atur urutan                                                                                             |
+| **Experience & Certifications** | CRUD pengalaman, sertifikasi, dan penghargaan                                                                                   |
+| **Social Links**                | CRUD platform + URL, atur urutan                                                                                                |
+| **Messages**                    | Daftar pesan contact, tandai sudah dibaca, hapus                                                                                |
+| **Access**                      | Kelola email admin (lihat 5.2)                                                                                                  |
+| **Audit**                       | `/admin/audit`: log read-only aktivitas terbaru                                                                                 |
 
 Ketentuan:
+
 - UI admin bertema neobrutalism dengan Table, Dialog, Form, dan toast
 - Header admin menampilkan nama + avatar Google dan tombol logout
 - Aksi destruktif membutuhkan dialog konfirmasi
@@ -311,6 +322,7 @@ model AuditLog {
 ```
 
 ### 7.2 Seed
+
 Seed script wajib: (1) memasukkan `DEFAULT_ADMIN_EMAIL` ke `AdminEmail` dengan `isDefault = true`, (2) mengisi konten dummy (profil, beberapa project, skills, pengalaman, sertifikasi, social links) agar website langsung terlihat penuh. Bersihkan session kedaluwarsa secara berkala (saat login atau lewat Cron Trigger).
 
 ---
@@ -320,6 +332,7 @@ Seed script wajib: (1) memasukkan `DEFAULT_ADMIN_EMAIL` ke `AdminEmail` dengan `
 Petakan kontrol berikut di `SECURITY.md` (kontrol apa → file/kode mana yang menerapkannya). Keamanan adalah syarat selesai.
 
 ### A01: Broken Access Control
+
 - Deny by default: semua `/admin/*` dan `/api/admin/*` diproteksi middleware, kecuali whitelist eksplisit (`/admin/login`, `/api/auth/google*`, endpoint publik contact)
 - Otorisasi dicek **di server pada setiap request**, bukan hanya disembunyikan di UI; cek ulang email session terhadap allowlist
 - Cegah IDOR: semua query by ID divalidasi (format, keberadaan, konteks)
@@ -328,6 +341,7 @@ Petakan kontrol berikut di `SECURITY.md` (kontrol apa → file/kode mana yang me
 - Draft/unpublished tidak boleh bocor lewat route publik atau `/media`
 
 ### A02: Security Misconfiguration
+
 - Header: `Content-Security-Policy` (tanpa `unsafe-eval`; nonce/hash untuk inline script bila perlu), `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (atau `frame-ancestors 'none'`), `Referrer-Policy`, `Permissions-Policy`
 - Bucket R2 **tidak publik**; akses hanya lewat `/media`
 - Tidak ada secret di repo; `.env`/`.dev.vars` masuk `.gitignore`; sediakan `.env.example`
@@ -337,6 +351,7 @@ Petakan kontrol berikut di `SECURITY.md` (kontrol apa → file/kode mana yang me
 - Catatan: jika CSP ketat bentrok dengan inline script Astro/React, gunakan nonce atau hash, jangan melonggarkan dengan `unsafe-inline` begitu saja
 
 ### A03: Software Supply Chain Failures
+
 - Commit lockfile (`pnpm-lock.yaml`), install dengan `--frozen-lockfile` di CI
 - Minimalkan dependency, pilih paket populer dan terawat, pin versi
 - Jalankan `pnpm audit`; aktifkan Dependabot/Renovate
@@ -344,6 +359,7 @@ Petakan kontrol berikut di `SECURITY.md` (kontrol apa → file/kode mana yang me
 - Tidak ada script CDN pihak ketiga tanpa Subresource Integrity (lebih baik self-host)
 
 ### A04: Cryptographic Failures
+
 - HTTPS saja (redirect HTTP → HTTPS, HSTS)
 - Token session dari CSPRNG (`crypto.getRandomValues`, minimal 32 byte); di DB hanya hash SHA-256
 - Cookie: `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`; gunakan prefix `__Host-` bila memungkinkan
@@ -351,6 +367,7 @@ Petakan kontrol berikut di `SECURITY.md` (kontrol apa → file/kode mana yang me
 - Jangan membuat kripto sendiri; gunakan Web Crypto dan library teruji (`arctic`)
 
 ### A05: Injection (termasuk XSS)
+
 - Semua akses DB lewat Prisma (parameterized). **Dilarang** `$queryRawUnsafe`/`$executeRawUnsafe`; bila raw query tak terhindarkan, pakai tagged template `$queryRaw`
 - Validasi semua input server-side dengan Zod (tipe, panjang maksimum, format, allowlist nilai)
 - Output encoding: jangan pakai `set:html`, `dangerouslySetInnerHTML`, atau `innerHTML` dengan data user. Bila perlu render markdown/rich text, sanitasi dengan library (DOMPurify/`sanitize-html`) dan whitelist tag
@@ -359,6 +376,7 @@ Petakan kontrol berikut di `SECURITY.md` (kontrol apa → file/kode mana yang me
 - Cegah header injection dan open redirect: parameter redirect hanya boleh path internal
 
 ### A06: Insecure Design
+
 - Threat model singkat di `SECURITY.md` (aset: akun admin, data D1, objek R2, pesan contact; ancaman utama dan mitigasinya)
 - Rate limiting dan batas ukuran pada form contact, login, dan upload; batasi jumlah dan panjang field
 - Anti-lockout allowlist (lihat 5.2)
@@ -366,6 +384,7 @@ Petakan kontrol berikut di `SECURITY.md` (kontrol apa → file/kode mana yang me
 - Pisahkan data publik vs admin pada level query (select hanya kolom yang perlu)
 
 ### A07: Authentication Failures
+
 - Validasi `state`, PKCE `code_verifier`, tolak `email_verified` ≠ true, cek allowlist
 - Session ID baru saat login, idle + absolute expiry, logout menghapus session di server
 - Cookie sementara OAuth berumur pendek dan sekali pakai
@@ -373,17 +392,20 @@ Petakan kontrol berikut di `SECURITY.md` (kontrol apa → file/kode mana yang me
 - Tidak ada fitur password, reset password, atau registrasi
 
 ### A08: Software or Data Integrity Failures
+
 - Tidak ada deserialisasi data tak tepercaya; hindari `eval` dan `new Function`
 - Semua data dari client (body, query, cookie, header) dianggap tak tepercaya dan divalidasi ulang di server
 - CI/CD: deploy hanya dari branch utama, secret di GitHub/Cloudflare secrets, migrasi DB dijalankan dengan sengaja
 
 ### A09: Security Logging & Alerting Failures
+
 - Tabel `AuditLog`: catat login berhasil/gagal, penolakan allowlist, penambahan/penghapusan email admin, CRUD konten admin, upload, logout (waktu, email aktor, aksi, IP, user agent)
 - **Jangan** log secret, token, cookie, atau isi pesan sensitif
 - `/admin/audit` (read-only) untuk melihat log terbaru
 - Sediakan hook/TODO yang jelas untuk alerting (mis. notifikasi saat banyak login gagal)
 
 ### A10: Mishandling of Exceptional Conditions
+
 - Fail closed: bila pengecekan auth/otorisasi error, akses ditolak
 - Handler error global: respons generik ke user (tanpa stack trace, SQL, atau path internal); detail hanya di log server
 - Semua I/O (D1, R2, fetch ke Google) dibungkus try/catch dengan timeout; state tetap konsisten (gagal upload R2 tidak menyisakan baris DB yatim, dan sebaliknya)
@@ -395,25 +417,28 @@ Petakan kontrol berikut di `SECURITY.md` (kontrol apa → file/kode mana yang me
 ## 9. Konfigurasi Cloudflare & Environment
 
 ### 9.1 Binding (`wrangler.jsonc`)
+
 - `DB` → Cloudflare D1
 - `BUCKET` → Cloudflare R2
 - Compatibility flag `nodejs_compat` (dibutuhkan Prisma)
 - Tipe environment di `env.d.ts` untuk binding dan secrets
 
 ### 9.2 Environment Variables & Secrets
+
 Dokumentasikan di `.env.example` dan README.
 
-| Nama | Keterangan |
-|---|---|
-| `GOOGLE_CLIENT_ID` | OAuth client ID dari Google Cloud Console |
-| `GOOGLE_CLIENT_SECRET` | OAuth client secret (secret, jangan di-commit) |
-| `GOOGLE_REDIRECT_URI` | Lokal: `http://localhost:4321/api/auth/google/callback`; produksi: `https://<domain>/api/auth/google/callback` |
-| `DEFAULT_ADMIN_EMAIL` | Email admin default yang di-seed ke allowlist |
-| `PUBLIC_SITE_URL` | URL publik situs (canonical, OG, sitemap) |
+| Nama                   | Keterangan                                                                                                     |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `GOOGLE_CLIENT_ID`     | OAuth client ID dari Google Cloud Console                                                                      |
+| `GOOGLE_CLIENT_SECRET` | OAuth client secret (secret, jangan di-commit)                                                                 |
+| `GOOGLE_REDIRECT_URI`  | Lokal: `http://localhost:4321/api/auth/google/callback`; produksi: `https://<domain>/api/auth/google/callback` |
+| `DEFAULT_ADMIN_EMAIL`  | Email admin default yang di-seed ke allowlist                                                                  |
+| `PUBLIC_SITE_URL`      | URL publik situs (canonical, OG, sitemap)                                                                      |
 
 Secret produksi di-set dengan `wrangler secret put`; lokal lewat `.dev.vars`. Sertakan langkah singkat membuat OAuth client di Google Cloud Console (authorized redirect URI untuk lokal dan produksi).
 
 ### 9.3 Lokal & Deploy
+
 - Lokal: `astro dev` dengan platform proxy agar D1 dan R2 berjalan di lokal
 - Deploy: buat database D1, buat bucket R2, jalankan migrasi remote, set secrets, deploy
 
@@ -481,6 +506,7 @@ Kerjakan bertahap; pastikan tiap tahap bisa dijalankan sebelum lanjut.
 ## 13. Acceptance Criteria
 
 ### Fungsional
+
 - [ ] Empat halaman publik (Home, About, Projects, Contact) tampil dengan data dari D1
 - [ ] Tema neobrutalism orange-duotone konsisten di seluruh halaman publik dan admin
 - [ ] Responsif dengan baik di mobile (≥360px), tablet, dan desktop
@@ -490,6 +516,7 @@ Kerjakan bertahap; pastikan tiap tahap bisa dijalankan sebelum lanjut.
 - [ ] Perubahan konten di admin langsung terlihat di halaman publik tanpa deploy ulang
 
 ### Autentikasi
+
 - [ ] Login hanya lewat Google; email di luar allowlist ditolak tanpa membuat session
 - [ ] Email yang `email_verified` ≠ true ditolak
 - [ ] Email default dari env ter-seed otomatis dan tidak bisa dihapus dari UI
@@ -498,6 +525,7 @@ Kerjakan bertahap; pastikan tiap tahap bisa dijalankan sebelum lanjut.
 - [ ] Mengakses `/admin/*` atau `/api/admin/*` tanpa session valid selalu ditolak
 
 ### Keamanan
+
 - [ ] Semua poin A01-A10 pada bagian 8 terimplementasi dan terpetakan di `SECURITY.md`
 - [ ] Tidak ada `$queryRawUnsafe`, `dangerouslySetInnerHTML`, atau `set:html` dengan data user
 - [ ] Header keamanan terkirim di semua respons; CSP tanpa `unsafe-eval`
@@ -506,6 +534,7 @@ Kerjakan bertahap; pastikan tiap tahap bisa dijalankan sebelum lanjut.
 - [ ] `pnpm audit` tidak menyisakan kerentanan high/critical yang belum dijelaskan
 
 ### Kualitas
+
 - [ ] `pnpm build` dan type-check (`astro check`) lulus tanpa error
 - [ ] Skor Lighthouse mobile: Performance ≥ 90, Accessibility ≥ 95, SEO ≥ 95, Best Practices ≥ 95
 - [ ] README cukup untuk menjalankan proyek dari nol di mesin baru (Windows/macOS/Linux)

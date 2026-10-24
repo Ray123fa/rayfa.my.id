@@ -8,7 +8,7 @@ export const GET: APIRoute = ({ site }) => {
     "https://example.com"
   ).replace(/\/$/, "");
   return new Response(
-    `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api\nSitemap: ${origin}/sitemap.xml`,
+    `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api\nSitemap: ${origin}/sitemap-index.xml`,
     { headers: { "Content-Type": "text/plain; charset=utf-8" } },
   );
 };
